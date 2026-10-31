@@ -532,20 +532,26 @@ function goalSheet(){
   draw();
 }
 function foodSheet(meal){
-  let q="";
-  const draw=()=>{
-    const res=searchFoods(q);
-    sheet(`<h2 style="margin-top:0">${meal}에 추가</h2>
-    <input id="fq" type="search" placeholder="음식 이름 (예: 닭가슴살, 김치찌개)" value="${esc(q)}" autocomplete="off">
-    <div class="mut" style="margin:6px 0">${q?`검색 결과 ${res.length}개${res.length===40?"+":""}`:(res.length?"최근 먹은 음식":"식약처 영양성분 DB 1,015개 + 내가 만든 음식")}</div>
-    <div class="fl">${res.map((f,i)=>`<button class="fr" data-pick="${i}"><span>${esc(shown(f[0]))}${f[9]==="mine"?' <em class="tag2">내 음식</em>':""}</span><span class="mut">${r0(f[2]*f[7]/100)}kcal / ${f[7]}${f[8]?"ml":"g"}</span></button>`).join("")}</div>
+  /* 입력칸은 한 번만 만들고, 글자를 칠 때는 결과 목록만 바꿔요.
+     (입력칸을 다시 그리면 한글 조합이 끊겨서 'ㅆㅏㄹ'처럼 풀어져요) */
+  let res=[];
+  sheet(`<h2 style="margin-top:0">${meal}에 추가</h2>
+    <input id="fq" type="search" placeholder="음식 이름 (예: 닭가슴살, 김치찌개)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    <div class="mut" id="fcount" style="margin:6px 0"></div>
+    <div class="fl" id="flist"></div>
     <button class="btn ghost" id="custom">목록에 없어요 · 직접 입력</button><button class="btn ghost" id="cl">닫기</button>`);
-    const fq=$("#fq"); fq.focus(); fq.setSelectionRange(q.length,q.length);
-    fq.oninput=()=>{ q=fq.value; clearTimeout(fq._t); fq._t=setTimeout(draw,150); };
-    document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>portionSheet(meal,res[+b.dataset.pick]));
-    $("#custom").onclick=()=>customSheet(meal,q); $("#cl").onclick=closeSheet;
+  const fq=$("#fq");
+  const list=()=>{
+    const q=fq.value; res=searchFoods(q);
+    $("#fcount").textContent = q ? `검색 결과 ${res.length}개${res.length===40?"+":""}` : (res.length?"최근 먹은 음식":"식약처 영양성분 DB 1,015개 + 내가 만든 음식");
+    $("#flist").innerHTML = res.map((f,i)=>`<button class="fr" data-pick="${i}"><span>${esc(shown(f[0]))}${f[9]==="mine"?' <em class="tag2">내 음식</em>':""}</span><span class="mut">${r0(f[2]*f[7]/100)}kcal / ${f[7]}${f[8]?"ml":"g"}</span></button>`).join("");
+    $("#flist").style.display = res.length ? "" : "none";
   };
-  draw();
+  fq.addEventListener("input", ()=>{ clearTimeout(fq._t); fq._t=setTimeout(list,120); });
+  fq.addEventListener("compositionend", list);
+  $("#flist").onclick=e=>{ const b=e.target.closest("[data-pick]"); if(b) portionSheet(meal,res[+b.dataset.pick]); };
+  $("#custom").onclick=()=>customSheet(meal,fq.value); $("#cl").onclick=closeSheet;
+  list(); fq.focus();
 }
 function portionSheet(meal, f, editIdx){
   const m=dayMeals(), old= editIdx!=null ? m[meal][editIdx] : null;
