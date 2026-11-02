@@ -106,6 +106,10 @@ input[type=date],input[type=search]{width:100%;font:inherit;padding:12px;border:
 input[type=datetime-local]{width:100%;font:inherit;padding:12px;border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink)}
 .pick{display:flex;gap:8px}.pick select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c9a96e' stroke-width='2'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;flex:1.5;font:italic 800 22px var(--cond);border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink);padding:10px 12px;-webkit-appearance:none;appearance:none}
 .pick input{flex:1;min-width:0}.pick input::placeholder{font:600 14px Pretendard,sans-serif;color:#6c6a64}
+.hmbox{flex:1.2;display:flex;align-items:center;gap:4px;background:var(--card2);border-bottom:2px solid var(--gold);padding:0 10px}
+.hmbox input{width:100%;min-width:0;border:0!important;background:none!important;padding:10px 0!important;text-align:right;font:italic 800 24px var(--cond)!important;color:var(--ink)}
+.hmbox input::placeholder{font:italic 800 24px var(--cond);color:#555}
+.hmbox span{font:italic 800 18px var(--cond);color:var(--gold);flex:none}
 </style>
 </head>
 <body>
@@ -133,7 +137,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.3.1";
+const APP_VER = "0.3.2";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -259,6 +263,30 @@ document.addEventListener("change",e=>{ const s=e.target; if(!s.matches||!s.matc
   inp.dispatchEvent(new Event("input",{bubbles:true})); inp.dispatchEvent(new Event("change",{bubbles:true})); });
 document.addEventListener("input",e=>{ const inp=e.target; if(inp.tagName!=="INPUT"||!inp.id) return; const s=document.getElementById(inp.id+"_s"); if(!s||!s.dataset.pick) return;
   s.innerHTML=pickOpts(inp.value,+s.dataset.lo,+s.dataset.hi,+s.dataset.st,s.dataset.u); });
+
+/* ───────── 잠 시간: 0.5시간 단위 고르기 + 직접 입력 (1H 24M) ───────── */
+const hasSleep = v => v!=="" && v!=null && !isNaN(+v);
+function hm(v){ const t=Math.round(+v*60); return [Math.floor(t/60), t%60]; }
+function fmtSleep(v){ const [h,m]=hm(v); return `${h}H ${String(m).padStart(2,"0")}M`; }
+function sleepOpts(v){ const o=[]; for(let x=0;x<=14;x+=0.5) o.push(x);
+  const has=hasSleep(v)&&o.some(x=>Math.abs(x-v)<1e-6);
+  return `<option value="">고르기</option>${hasSleep(v)&&!has?`<option value="${v}" selected>직접 ${fmtSleep(v)}</option>`:""}`+
+    o.map(x=>`<option value="${x}" ${has&&Math.abs(x-v)<1e-6?"selected":""}>${fmtSleep(x)}</option>`).join(""); }
+function sleepPicker(v){ const [h,m]=hasSleep(v)?hm(v):["",""];
+  return `<div class="pick"><select id="sh_s">${sleepOpts(v)}</select>
+  <div class="hmbox"><input id="sh_h" type="text" inputmode="numeric" maxlength="2" value="${h}" placeholder="0"><span>H</span>
+  <input id="sh_m" type="text" inputmode="numeric" maxlength="2" value="${hasSleep(v)?String(m).padStart(2,"0"):""}" placeholder="00"><span>M</span></div></div>`; }
+function bindSleep(onv){
+  const S_=$("#sh_s"), H=$("#sh_h"), M=$("#sh_m");
+  const fromFields=()=>{ const h=H.value.replace(/\D/g,""), m=M.value.replace(/\D/g,"");
+    if(h===""&&m===""){ onv(""); S_.innerHTML=sleepOpts(""); return; }
+    const mm=Math.min(59,+m||0), v=Math.round(((+h||0)+mm/60)*100)/100; onv(v); S_.innerHTML=sleepOpts(v); };
+  H.oninput=()=>{ H.value=H.value.replace(/\D/g,"").slice(0,2); fromFields();
+    // 2자리거나 2 이상이면 분(M) 칸으로 넘어감 (1은 10~14시간일 수 있어 기다림)
+    if(H.value.length===2 || +H.value>=2 || H.value==="0") { M.focus(); M.select(); } };
+  M.oninput=()=>{ M.value=M.value.replace(/\D/g,"").slice(0,2); if(+M.value>59) M.value="59"; fromFields(); };
+  S_.onchange=()=>{ const v=S_.value; if(v===""){ H.value=""; M.value=""; onv(""); return; } const [h,m]=hm(v); H.value=h; M.value=String(m).padStart(2,"0"); onv(+v); };
+}
 /* ───────── 처음 설정 ───────── */
 function renderOnboard(){
   ob = ob || { step:0, p:{ birthYear:"", birthMonth:"", sex:"", height:"", weight:"", weeklySessions:"", level:"", cat:"", sub:"", pos:"", weightClass:"", classLimit:"", screening:{} } };
@@ -381,7 +409,7 @@ function signal(date){
   }
   // 3) 잠
   const need=b.youth?8:7;
-  if(L.sleepH && L.sleepH<need-1) up(1,`잠이 ${L.sleepH}시간으로 권장(${b.youth?"8~10":"7"}시간 이상)보다 적어요.`);
+  if(L.sleepH && L.sleepH<need-1) up(1,`잠이 ${fmtSleep(L.sleepH)}로 권장(${b.youth?"8~10":"7"}시간 이상)보다 적어요.`);
   // 4) 훈련량 급증: 최근 7일 합 ÷ 최근 28일 주평균 (참고 지표)
   let acute=0, chronic=0, days=0;
   for(let i=0;i<28;i++){ const x=S.logs[addDays(date,-i)]; if(x){ days++; const v=tload(x); chronic+=v; if(i<7) acute+=v; } }
@@ -455,7 +483,7 @@ function scaleHtml(k,v,lo,hi,label){ return `<label class="f">${label}</label><d
 const PARTS=["목","어깨","팔꿈치·손목","허리","엉덩이","무릎","발목·발","허벅지","종아리","기타"];
 function checkinForm(x){
   return `<div class="card">
-  <label class="f">잔 시간</label>${picker("sh",x.sleepH,0,14,0.5,"시간")}
+  <label class="f">잔 시간</label>${sleepPicker(x.sleepH)}
   <label class="f">아침 몸무게 <span class="mut">(선택 · 최근 ${curWeight()}kg)</span></label>${picker("mw",x.weight,...wRange(curWeight()),1,"kg")}
   ${scaleHtml("sleepQ",x.sleepQ,"아주 나쁨","아주 좋음","잠은 어땠나요?")}
   ${scaleHtml("fatigue",x.fatigue,"아주 피곤","아주 상쾌","피로는?")}
@@ -464,14 +492,14 @@ function checkinForm(x){
   <label class="f">아픈 곳이 있나요?</label>
   <div class="chips">${["없음","약간","중간","심함"].map((v,i)=>`<button class="chip ${x.pain===i?"on":""}" data-pain="${i}">${v}</button>`).join("")}</div>
   ${x.pain>0?`<label class="f">어디가 아픈가요?</label><div class="chips">${PARTS.map(v=>`<button class="chip ${x.painPart===v?"on":""}" data-part="${v}">${v}</button>`).join("")}</div>`:""}
-  </div><button class="btn" id="saveck" ${x.sleepQ&&x.fatigue&&x.soreness&&x.stress&&x.sleepH?"":"disabled"}>저장하고 신호 보기</button>`;
+  </div><button class="btn" id="saveck" ${x.sleepQ&&x.fatigue&&x.soreness&&x.stress&&hasSleep(x.sleepH)?"":"disabled"}>저장하고 신호 보기</button>`;
 }
 function bindCheckin(edit,L){
   const re=()=>{ edit?renderTodayEdit(L):renderToday(); };
   document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ draft[b.dataset.k]=+b.dataset.n; re(); });
   document.querySelectorAll("[data-pain]").forEach(b=>b.onclick=()=>{ draft.pain=+b.dataset.pain; if(!draft.pain) draft.painPart=""; re(); });
   document.querySelectorAll("[data-part]").forEach(b=>b.onclick=()=>{ draft.painPart=b.dataset.part; re(); });
-  $("#sh").oninput=e=>{ draft.sleepH=e.target.value; $("#saveck").disabled=!(draft.sleepQ&&draft.fatigue&&draft.soreness&&draft.stress&&draft.sleepH); };
+  bindSleep(v=>{ draft.sleepH=v; $("#saveck").disabled=!(draft.sleepQ&&draft.fatigue&&draft.soreness&&draft.stress&&hasSleep(draft.sleepH)); });
   $("#mw").oninput=e=>{ draft.weight=e.target.value; };
   $("#saveck").onclick=()=>{
     const d=today(); const prev=S.logs[d]||{};
@@ -678,7 +706,7 @@ function renderHistory(){
   for(let i=27;i>=0;i--){ const k=addDays(d,-i); loads.push(S.logs[k]?tload(S.logs[k]):0); }
   for(let i=0;i<14;i++){ const k=addDays(d,-i), L=S.logs[k]; if(!L) continue; const s=L.sleepQ?signal(k):null;
     rows.push(`<div class="hist"><span class="hd" style="background:var(--${s?s.color:"line"})"></span><div style="flex:1"><b>${k.slice(5).replace("-","/")}</b>
-    <span class="mut"> · 컨디션 ${L.sleepQ?wsum(L)+"/20":"-"} · 잠 ${L.sleepH??"-"}시간${L.weight?" · "+L.weight+"kg":""}${L.trainMin?" · 훈련 "+L.trainMin+"분×"+(L.rpe||"-"):""}${L.pain?" · 통증 "+["","약간","중간","심함"][L.pain]+(L.painPart?"("+L.painPart+")":""):""}</span></div></div>`); }
+    <span class="mut"> · 컨디션 ${L.sleepQ?wsum(L)+"/20":"-"} · 잠 ${L.sleepH!=null?fmtSleep(L.sleepH):"-"}${L.weight?" · "+L.weight+"kg":""}${L.trainMin?" · 훈련 "+L.trainMin+"분×"+(L.rpe||"-"):""}${L.pain?" · 통증 "+["","약간","중간","심함"][L.pain]+(L.painPart?"("+L.painPart+")":""):""}</span></div></div>`); }
   const mx=Math.max(1,...loads);
   const bars=loads.map((v,i)=>`<rect x="${i*(100/28)+0.4}" y="${60-v/mx*56}" width="${100/28-0.8}" height="${v/mx*56}" rx="0.6" fill="var(--acc)" opacity="${i>=21?1:.45}"/>`).join("");
   $("#app").innerHTML=`<div class="kick">HISTORY</div><h1>기록</h1>
