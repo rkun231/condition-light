@@ -50,6 +50,7 @@ nav button.on{color:var(--acc);font-weight:700}
 .hist:last-child{border-bottom:0}
 .hd{width:14px;height:14px;border-radius:50%;flex:none}
 .steps{display:flex;gap:4px;margin:0 0 14px}.steps i{flex:1;height:4px;border-radius:4px;background:var(--line)}.steps i.on{background:var(--acc)}
+.glab{font-size:13px;color:var(--mut);font-weight:600;margin:10px 0 6px}
 .yn{display:flex;gap:8px;margin:6px 0 12px}.yn .chip{flex:1;text-align:center}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9}
 .modal .card{width:100%;max-width:560px;border-radius:20px 20px 0 0;margin:0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
@@ -97,12 +98,95 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
+const APP_VER = "0.2.2";
+// subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
-  "구기": { subs:{ "축구":["골키퍼","수비수","미드필더","공격수"], "풋살":["골레이로","픽소","알라","피보"], "기타 구기":null }, extra:"포지션" },
+  "구기": { subs:{
+    "축구":[["골키퍼",["골키퍼"]],["수비",["센터백","풀백·윙백"]],["미드필더",["수비형 미드필더","중앙 미드필더","공격형 미드필더"]],["공격",["윙어","스트라이커"]]],
+    "농구":[["가드",["포인트가드","슈팅가드"]],["포워드",["스몰포워드","파워포워드"]],["센터",["센터"]]],
+    "야구":[["투수",["선발투수","불펜투수"]],["포수",["포수"]],["내야",["1루수","2루수","유격수","3루수"]],["외야",["좌익수","중견수","우익수"]],["타격",["지명타자"]]],
+    "풋살":[["",["골레이로 (골키퍼)","픽소 (수비)","알라 (측면)","피보 (최전방)"]]],
+    "기타 구기":null } },
   "육상": { subs:{ "단거리":null,"중장거리":null,"도약":null,"투척":null,"기타 육상":null } },
   "투기": { subs:{ "복싱":null,"MMA":null,"주짓수":null,"레슬링":null,"태권도":null,"유도":null,"기타 투기":null }, weightClass:true },
   "기타": { subs:{ "기타":null } }
 };
+const SUB_HINT = { "단거리":"100·200·400m, 허들", "중장거리":"800m ~ 10,000m", "도약":"멀리·세단·높이·장대높이뛰기", "투척":"포환·원반·창·해머던지기" };
+// '기타'를 골랐을 때 누르면 이름이 들어가는 예시
+const EXAMPLES = {
+  "기타 구기":[["",["배구","핸드볼","럭비","하키","테니스","배드민턴","탁구","소프트볼","족구","세팍타크로"]]],
+  "기타 육상":[["",["마라톤","경보","혼성경기 (10종·7종)","3000m 장애물","크로스컨트리","산악·트레일 달리기"]]],
+  "기타 투기":[["",["극진가라데","가라데 (WKF)","삼보","킥복싱","무에타이","씨름","우슈 산타"]]],
+  "기타":[["하계",["골프","수영","사이클","트라이애슬론","체조","역도","양궁","사격","조정","카누","스포츠클라이밍"]],
+          ["동계",["스키","스노보드","스피드스케이팅","쇼트트랙","피겨스케이팅","아이스하키","컬링"]],
+          ["그 밖",["볼링","크로스핏","보디빌딩","등산"]]]
+};
+// 포지션별 경기 부담 차이 (참고용 설명, 계산에는 쓰지 않음)
+const POS_NOTE = {
+  "골키퍼":"뛰는 거리는 가장 짧고, 다이빙·점프 같은 짧고 폭발적인 동작이 많아요.",
+  "센터백":"필드 선수 중 고강도 달리기는 가장 적은 편이고, 공중볼·몸싸움이 많아요.",
+  "풀백·윙백":"측면을 오르내리며 고강도 달리기와 스프린트가 많은 편이에요.",
+  "수비형 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "중앙 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "공격형 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "윙어":"측면 선수는 고강도 달리기와 스프린트가 가장 많은 편이에요.",
+  "스트라이커":"총 이동 거리는 중간이지만 짧은 스프린트와 몸싸움 비중이 커요.",
+  "포인트가드":"가드는 이동 거리와 고강도 움직임이 가장 많은 편이에요.",
+  "슈팅가드":"가드는 이동 거리와 고강도 움직임이 가장 많은 편이에요.",
+  "스몰포워드":"포워드는 가드와 센터의 중간 정도 움직임을 보여요.",
+  "파워포워드":"포워드는 가드와 센터의 중간 정도 움직임을 보여요.",
+  "센터":"뛰는 거리는 적은 편이고, 자리싸움·리바운드 같은 몸싸움이 많아요.",
+  "선발투수":"투구 수와 쉬는 날이 가장 중요해요. 팔꿈치·어깨 통증은 꼭 기록해 두세요.",
+  "불펜투수":"연투(이틀 이상 연속 등판)가 쌓이지 않게 투구 수와 쉬는 날을 같이 보세요.",
+  "포수":"쪼그려 앉았다 일어나는 동작이 많아 무릎·허리 부담을 같이 보세요.",
+  "지명타자":"수비 부담이 없고 타격과 주루 위주예요."
+};
+["1루수","2루수","유격수","3루수"].forEach(k=>POS_NOTE[k]="짧은 전력 질주와 순간 방향 전환이 많아요.");
+["좌익수","중견수","우익수"].forEach(k=>POS_NOTE[k]="타구를 쫓는 짧은 전력 질주와 송구가 많아요.");
+const POS_SRC = { "축구":"Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2)",
+  "농구":"Stojanović 등 (2018) Sports Med 48(1)", "야구":"MLB·USA Baseball 'Pitch Smart' 투구 지침" };
+
+// 체급표: [이름, 한계 kg(무제한은 null)]
+const WC = {
+  "복싱":[
+    {org:"아마추어 (World Boxing, 2025~)",
+     m:[["플라이급",50],["밴텀급",55],["라이트급",60],["웰터급",65],["라이트미들급",70],["미들급",75],["라이트헤비급",80],["크루저급",85],["헤비급",90],["슈퍼헤비급",null]],
+     f:[["라이트플라이급",48],["플라이급",51],["밴텀급",54],["페더급",57],["라이트급",60],["웰터급",65],["라이트미들급",70],["미들급",75],["라이트헤비급",80],["헤비급",null]]},
+    {org:"프로",
+     m:[["미니멈급",47.6],["라이트플라이급",49],["플라이급",50.8],["슈퍼플라이급",52.2],["밴텀급",53.5],["슈퍼밴텀급",55.3],["페더급",57.2],["슈퍼페더급",59],["라이트급",61.2],["슈퍼라이트급",63.5],["웰터급",66.7],["슈퍼웰터급",69.9],["미들급",72.6],["슈퍼미들급",76.2],["라이트헤비급",79.4],["크루저급",90.7],["헤비급",null]],
+     f:"m"}],
+  "MMA":[
+    {org:"통합 규정 (UFC 등)",
+     m:[["스트로급",52.2],["플라이급",56.7],["밴텀급",61.2],["페더급",65.8],["라이트급",70.3],["웰터급",77.1],["미들급",83.9],["라이트헤비급",93],["헤비급",120.2]],
+     f:[["스트로급",52.2],["플라이급",56.7],["밴텀급",61.2],["페더급",65.8]]}],
+  "주짓수":[
+    {org:"IBJJF 성인 · 도복 포함",
+     m:[["루스터",57.5],["라이트페더",64],["페더",70],["라이트",76],["미들",82.3],["미디엄헤비",88.3],["헤비",94.3],["슈퍼헤비",100.5],["울트라헤비",null]],
+     f:[["루스터",48.5],["라이트페더",53.5],["페더",58.5],["라이트",64],["미들",69],["미디엄헤비",74],["헤비",79.3],["슈퍼헤비",null]]}],
+  "레슬링":[
+    {org:"자유형 (UWW 시니어)", m:[57,61,65,70,74,79,86,92,97,125], f:[50,53,55,57,59,62,65,68,72,76]},
+    {org:"그레코로만형 (UWW 시니어)", m:[55,60,63,67,72,77,82,87,97,130], f:null}],
+  "태권도":[
+    {org:"세계선수권 (WT)", m:[54,58,63,68,74,80,87,"+87"], f:[46,49,53,57,62,67,73,"+73"]},
+    {org:"올림픽", m:[58,68,80,"+80"], f:[49,57,67,"+67"]}],
+  "유도":[{org:"IJF", m:[60,66,73,81,90,100,"+100"], f:[48,52,57,63,70,78,"+78"]}],
+  "삼보":[{org:"FIAS 성인", m:[58,64,71,79,88,98,"+98"], f:[50,54,59,65,72,80,"+80"]}],
+  "가라데 (WKF)":[{org:"WKF 시니어 겨루기", m:[60,67,75,84,"+84"], f:[50,55,61,68,"+68"]}],
+  "극진가라데":[{org:"단체마다 달라요 · 예: WKO 성인", m:[65,70,75,80,90,"+90"], f:[55,60,65,"+65"]}]
+};
+// 숫자만 있는 표를 [이름, 한계] 형태로 바꿈
+function wcList(set, sex){
+  let L = sex==="여성" ? set.f : set.m;
+  if(L==="m") L=set.m;
+  if(!L) return null;
+  return L.map(x=> Array.isArray(x) ? x : (typeof x==="string" ? [x+"kg급",null] : ["-"+x+"kg급",x]));
+}
+function wcSets(p){
+  const key = p.sub==="기타 투기" ? p.subName : p.sub;
+  return WC[key] || null;
+}
+function b4youth(p){ return !!(p.birthYear&&p.birthMonth&&band(finalProfile(p)).youth); }
+function posList(cat,sub){ const g=SPORTS[cat]&&SPORTS[cat].subs[sub]; return g ? g.flatMap(x=>x[1]) : null; }
 const LEVELS = { hobby:"취미 (대회 안 나감)", amateur:"아마추어 대회 출전", pro:"프로·선수 등록" };
 
 /* ───────── 화면 전환 ───────── */
@@ -147,13 +231,29 @@ function renderOnboard(){
     <div class="chips" style="flex-direction:column">${Object.entries(LEVELS).map(([k,v])=>`<button class="chip ${p.level===k?"on":""}" data-lv="${k}">${v}</button>`).join("")}</div>`;
     ok=!!p.level;
   } else if(st===3){
+    const groups=(G,attr,cur)=>G.map(([g,L])=>`${g?`<div class="glab">${g}</div>`:""}<div class="chips">${L.map(v=>`<button class="chip ${cur===v?"on":""}" ${attr}="${esc(v)}">${esc(v)}</button>`).join("")}</div>`).join("");
+    const subs=p.cat?Object.keys(SPORTS[p.cat].subs):[];
+    const PG=p.sub&&SPORTS[p.cat].subs[p.sub];
+    const sets=p.sub&&SPORTS[p.cat].weightClass?wcSets(p):null;
+    const si=sets?Math.min(p.wcSet||0,sets.length-1):0;
+    const wl=sets?wcList(sets[si],p.sex):null;
     h=`<h1>종목</h1><div class="chips">${Object.keys(SPORTS).map(v=>`<button class="chip ${p.cat===v?"on":""}" data-cat="${v}">${v}</button>`).join("")}</div>
-    ${p.cat?`<label class="f">세부 종목</label><div class="chips">${Object.keys(SPORTS[p.cat].subs).map(v=>`<button class="chip ${p.sub===v?"on":""}" data-sub="${v}">${v}</button>`).join("")}</div>`:""}
-    ${p.sub&&/기타/.test(p.sub)?`<label class="f">종목 이름</label><input id="subname" type="text" value="${esc(p.subName||"")}" placeholder="예: 농구, 수영">`:""}
-    ${p.sub&&SPORTS[p.cat].subs[p.sub]?`<label class="f">포지션</label><div class="chips">${SPORTS[p.cat].subs[p.sub].map(v=>`<button class="chip ${p.pos===v?"on":""}" data-pos="${v}">${v}</button>`).join("")}</div>`:""}
-    ${p.sub&&SPORTS[p.cat].weightClass?`<div class="row"><div><label class="f">체급 이름 (선택)</label><input id="wc" type="text" value="${esc(p.weightClass)}" placeholder="예: 라이트급"></div>
-    <div><label class="f">체급 한계 kg (선택)</label><input id="wl" type="number" inputmode="decimal" value="${esc(p.classLimit)}" placeholder="70.3"></div></div>`:""}`;
-    ok=p.cat&&p.sub&&(!SPORTS[p.cat].subs[p.sub]||p.pos);
+    ${p.cat&&subs.length>1?`<label class="f">세부 종목</label><div class="chips">${subs.map(v=>`<button class="chip ${p.sub===v?"on":""}" data-sub="${v}">${v}</button>`).join("")}</div>
+      ${SUB_HINT[p.sub]?`<div class="mut" style="margin-top:6px">${SUB_HINT[p.sub]}</div>`:""}`:""}
+    ${p.sub&&EXAMPLES[p.sub]?`<label class="f">종목 이름</label><input id="subname" type="text" value="${esc(p.subName||"")}" placeholder="아래에서 고르거나 직접 써 주세요">
+      <div class="mut" style="margin:8px 0 2px">예시 (누르면 들어가요)</div>${groups(EXAMPLES[p.sub],"data-ex",p.subName)}`:""}
+    ${PG?`<label class="f">포지션</label>${groups(PG,"data-pos",p.pos)}
+      ${POS_NOTE[p.pos]?`<div class="banner info" style="margin-top:10px"><b>${esc(p.pos)}</b> · ${POS_NOTE[p.pos]}<small class="src">참고 설명이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요. 출처: ${POS_SRC[p.sub]}</small></div>`:""}`:""}
+    ${p.sub&&SPORTS[p.cat].weightClass?`<label class="f">체급</label>
+      ${sets&&sets.length>1?`<div class="chips">${sets.map((s,i)=>`<button class="chip ${si===i?"on":""}" data-wcset="${i}">${esc(s.org)}</button>`).join("")}</div>`:""}
+      ${sets&&!wl?`<div class="mut">${esc(sets[si].org)}은 ${esc(p.sex)} 체급이 없어요. 아래에 직접 써 주세요.</div>`:""}
+      ${wl?`${sets.length===1?`<div class="mut">${esc(sets[0].org)}</div>`:""}<div class="chips" style="margin-top:8px">${wl.map(([n,k],i)=>`<button class="chip ${p.weightClass===n&&String(p.classLimit)===String(k??"")?"on":""}" data-wc="${i}">${esc(n)}${k!=null&&!/kg/.test(n)?` · ${k}kg`:""}</button>`).join("")}</div>`:""}
+      ${!sets?`<div class="mut">${p.sub==="기타 투기"?"위 예시 중 삼보·가라데·극진가라데는 체급표가 나와요. ":""}체급표가 없는 종목은 아래에 직접 써 주세요.</div>`:""}
+      <div class="row"><div><label class="f">체급 이름</label><input id="wc" type="text" value="${esc(p.weightClass)}" placeholder="예: 라이트급"></div>
+      <div><label class="f">한계 kg</label><input id="wl" type="number" inputmode="decimal" step="0.1" value="${esc(p.classLimit)}" placeholder="무제한이면 비워 두기"></div></div>
+      <div class="mut" style="margin-top:6px">목록에 없거나 대회 규정이 다르면 직접 고쳐 주세요.${b4youth(p)?" 표는 성인 기준이에요.":""}</div>`:""}`;
+    const pl=posList(p.cat,p.sub);
+    ok=p.cat&&p.sub&&(!pl||pl.includes(p.pos));
   } else if(st===4){
     const Q=[["heart","의사에게 심장 질환이나 고혈압 진단을 받은 적이 있나요?"],["chest","운동하거나 쉴 때 가슴 통증·답답함을 느낀 적이 있나요?"],["faint","어지러워서 균형을 잃거나 정신을 잃은 적이 있나요?"]];
     h=`<h1>운동 전 건강 확인</h1><p class="mut">하나라도 '예'면 고강도 운동 전에 진료를 받아 보라고 안내해요. 진단이 아니에요.</p>
@@ -163,7 +263,7 @@ function renderOnboard(){
     const prof=finalProfile(p), b=band(prof);
     h=`<h1>준비됐어요</h1>
     <div class="card"><div><b>${b.name}</b> · 만 ${ageOf(prof)}세 · ${prof.sex}</div>
-    <div class="mut">${esc(prof.cat)} · ${esc(prof.subName||prof.sub)}${prof.pos?" · "+esc(prof.pos):""}${prof.weightClass?" · "+esc(prof.weightClass):""} · ${LEVELS[prof.level]}</div></div>
+    <div class="mut">${esc(prof.cat)} · ${esc(prof.subName||prof.sub)}${prof.pos?" · "+esc(prof.pos):""}${prof.weightClass?" · "+esc(prof.weightClass)+(prof.classLimit?` (${prof.classLimit}kg)`:""):""} · ${LEVELS[prof.level]}</div></div>
     ${b.youth?`<div class="banner info">유소년은 <b>감량·수분 감량 기능이 열리지 않아요.</b> 성장기에는 잘 먹고 잘 쉬는 게 우선이에요.${b.id==="u14"?" 만 14세 미만은 보호자와 함께 써 주세요.":""}</div>`:""}
     ${!b.youth&&prof.cat==="투기"&&prof.level!=="hobby"?`<div class="banner info">투기 종목 대회 출전으로 설정돼서, 나중에 <b>계체 후 회복 계산기</b>가 열려요.</div>`:""}
     ${prof.screeningFlag?`<div class="banner bad">건강 확인에 '예'가 있어요. <b>고강도 운동 전에 진료를 받아 보세요.</b></div>`:""}
@@ -176,6 +276,8 @@ function renderOnboard(){
 function finalProfile(p){
   const prof={...p, birthYear:+p.birthYear, birthMonth:+p.birthMonth, height:+p.height, weight:+p.weight, classLimit:p.classLimit?+p.classLimit:null};
   prof.screeningFlag=Object.values(p.screening).includes("예");
+  const sets=prof.cat==="투기"?wcSets(prof):null;
+  prof.classOrg = sets&&prof.weightClass ? sets[Math.min(prof.wcSet||0,sets.length-1)].org : "";
   return prof;
 }
 function bindOnboard(){
@@ -186,9 +288,15 @@ function bindOnboard(){
   sel("by","birthYear"); sel("bm","birthMonth");
   on("[data-sex]",b=>p.sex=b.dataset.sex); on("[data-ws]",b=>p.weeklySessions=b.dataset.ws);
   on("[data-lv]",b=>p.level=b.dataset.lv);
-  on("[data-cat]",b=>{ if(p.cat!==b.dataset.cat){p.cat=b.dataset.cat;p.sub="";p.pos="";} });
-  on("[data-sub]",b=>{ if(p.sub!==b.dataset.sub){p.sub=b.dataset.sub;p.pos="";} });
+  const clearWC=()=>{ p.weightClass=""; p.classLimit=""; p.wcSet=0; };
+  on("[data-cat]",b=>{ if(p.cat!==b.dataset.cat){ p.cat=b.dataset.cat; const ks=Object.keys(SPORTS[p.cat].subs); p.sub=ks.length===1?ks[0]:""; p.pos=""; p.subName=""; clearWC(); } });
+  on("[data-sub]",b=>{ if(p.sub!==b.dataset.sub){ p.sub=b.dataset.sub; p.pos=""; p.subName=""; clearWC();
+    if(p.sub==="복싱") p.wcSet = p.level==="pro" ? 1 : 0; } });
   on("[data-pos]",b=>p.pos=b.dataset.pos);
+  on("[data-ex]",b=>{ if(p.subName!==b.dataset.ex){ p.subName=b.dataset.ex; clearWC(); } });
+  on("[data-wcset]",b=>{ p.wcSet=+b.dataset.wcset; p.weightClass=""; p.classLimit=""; });
+  on("[data-wc]",b=>{ const sets=wcSets(p), L=wcList(sets[Math.min(p.wcSet||0,sets.length-1)],p.sex), x=L[+b.dataset.wc];
+    p.weightClass=x[0]; p.classLimit=x[1]==null?"":String(x[1]); });
   on("[data-scr]",b=>p.screening[b.dataset.scr]=b.dataset.v);
   inp("ht","height"); inp("wt","weight"); inp("wc","weightClass"); inp("wl","classLimit"); inp("subname","subName");
   $("#next").onclick=()=>{ if(ob.step<5){ob.step++;re();window.scrollTo(0,0);} else { S.profile=finalProfile(p); ob=null; save(); go("today"); } };
@@ -330,7 +438,7 @@ function renderSoon(){
 function renderSettings(){
   const p=S.profile, b=band(p);
   $("#app").innerHTML=`<h1>설정</h1>
-  <div class="card"><b>${b.name}</b> · 만 ${ageOf(p)}세 · ${p.sex} · ${p.height}cm · ${p.weight}kg<div class="mut">${esc(p.cat)} · ${esc(p.subName||p.sub)}${p.pos?" · "+esc(p.pos):""} · ${LEVELS[p.level]}</div>
+  <div class="card"><b>${b.name}</b> · 만 ${ageOf(p)}세 · ${p.sex} · ${p.height}cm · ${p.weight}kg<div class="mut">${esc(p.cat)} · ${esc(p.subName||p.sub)}${p.pos?" · "+esc(p.pos):""}${p.weightClass?" · "+esc(p.weightClass)+(p.classLimit?` (${p.classLimit}kg)`:""):""} · ${LEVELS[p.level]}</div>
   <button class="btn ghost" id="reprof">처음 설정 다시 하기 (기록은 그대로)</button></div>
   <h2>백업</h2><div class="card"><p class="mut">기록은 이 휴대폰에만 있어요. 폰을 바꾸거나 사파리 데이터를 지우면 사라질 수 있으니 가끔 내보내 두세요.${S.lastBackup?` 마지막 백업: ${S.lastBackup}`:""}</p>
   <button class="btn" id="exj">기록 내보내기 (복원용 파일)</button>
@@ -342,10 +450,13 @@ function renderSettings(){
   <p><b>훈련량 급증</b>: 최근 7일 합이 최근 4주 주평균의 몇 배인지 봐요. 21일 이상 기록이 있어야 계산해요. 이 비율은 부상 예측력에 논란이 있어서 <b>참고 지표</b>로만 써요.<small class="src">Gabbett (2016) Br J Sports Med 50; 비판: Impellizzeri 등 (2020) IJSPP 15(6)</small></p>
   <p><b>잠</b>: 성인 7시간 이상, 청소년 8~10시간 권장 기준에서 1시간 넘게 모자라면 노랑.<small class="src">미국수면의학회(AASM) 권고</small></p>
   <p><b>나이</b>: 35세 이상은 회복이 느려지는 점을 반영해 노랑 기준을 조금 더 일찍 잡아요.</p>
+  <p><b>포지션 설명</b>: 처음 설정에서 보여 주는 포지션별 경기 부담 차이는 참고용이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요.<small class="src">축구: Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2) · 농구: Stojanović 등 (2018) Sports Med 48(1) · 야구: MLB·USA Baseball 'Pitch Smart'</small></p>
+  <p><b>체급표</b>: 복싱 World Boxing(2025~)·프로 통상 체급, MMA 통합 규정, 주짓수 IBJJF(도복 포함), 레슬링 UWW, 태권도 WT, 유도 IJF, 삼보 FIAS, 가라데 WKF. 극진가라데는 단체마다 달라 WKO 예시예요. 대회 규정이 다르면 직접 고쳐 쓰세요.</p>
   <p class="mut">이 앱은 의학적 진단·치료를 하지 않아요. 몸에 이상이 있으면 의료진과 상담하세요.</p></div>
   <h2>식단 목표 기준</h2><div class="card" style="font-size:15px"><p>하루 열량은 기초대사량(Mifflin-St Jeor 공식) × 주간 훈련 횟수 활동계수에서 시작해요. 단백질은 체중 1kg당 1.6g(감량 2.0g, 증량 1.8g, 청소년 1.5g), 탄수화물은 그날 훈련 시간에 따라 1kg당 3~8g이에요. 감량은 주 1%, 증량은 주 0.5%를 넘지 않게 막아요.<small class="src">Thomas 등 (2016) Med Sci Sports Exerc 48(3); Jäger 등 (2017) JISSN 14:20; Helms 등 (2014) JISSN 11:20; Mifflin 등 (1990) Am J Clin Nutr 51(2)</small></p><p>음식 영양값은 식품의약품안전처 식품영양성분 통합DB(공공데이터포털, 2026-09-29 기준)에서 가져왔어요.</p></div>
-  <h2>데이터</h2><div class="card"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div>`;
-  $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), screening:{...S.profile.screening}}}; S.profile=null; render(); };
+  <h2>데이터</h2><div class="card"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div>
+  <p class="mut" style="text-align:center">컨디션 신호등 v${APP_VER}</p>`;
+  $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), classLimit:S.profile.classLimit??"", subName:S.profile.subName||"", screening:{...S.profile.screening}}}; S.profile=null; render(); };
   $("#exj").onclick=()=>{ download(`컨디션신호등_백업_${today()}.json`, JSON.stringify({app:"condition-note",version:1,exported:new Date().toISOString(),data:S},null,1), "application/json"); S.lastBackup=today(); save(); };
   $("#exc").onclick=()=>{ download(`컨디션신호등_기록_${today()}.csv`, toCSV(), "text/csv"); };
   $("#imp").onclick=()=>$("#impf").click();
