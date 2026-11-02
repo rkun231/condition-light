@@ -104,6 +104,8 @@ input[type=date],input[type=search]{width:100%;font:inherit;padding:12px;border:
 .slv{flex:none;font:italic 800 14px var(--cond);color:var(--c);border:1.5px solid var(--c);padding:1px 6px}
 .sym{border-top:0;border-left:6px solid var(--c)}.sym .t{font:italic 800 13px var(--cond);letter-spacing:.2em;color:var(--c)}.sym .msg{font-size:14px;color:var(--mut);margin-top:10px}
 input[type=datetime-local]{width:100%;font:inherit;padding:12px;border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink)}
+.pick{display:flex;gap:8px}.pick select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c9a96e' stroke-width='2'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;flex:1.5;font:italic 800 22px var(--cond);border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink);padding:10px 12px;-webkit-appearance:none;appearance:none}
+.pick input{flex:1;min-width:0}.pick input::placeholder{font:600 14px Pretendard,sans-serif;color:#6c6a64}
 </style>
 </head>
 <body>
@@ -131,7 +133,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.3.0";
+const APP_VER = "0.3.1";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -239,6 +241,24 @@ function renderNav(){
 }
 document.addEventListener("click", e=>{ const b=e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
 
+
+/* ───────── 고르기 + 직접 입력 (잠 0.5시간, 몸무게 1kg 단위) ───────── */
+function pickOpts(v,lo,hi,step,unit){
+  const o=[]; for(let x=lo;x<=hi+1e-9;x=Math.round((x+step)*10)/10) o.push(x);
+  const has=v!==""&&v!=null&&o.some(x=>x===+v);
+  return `<option value="">고르기</option>${v!==""&&v!=null&&!has?`<option value="${esc(v)}" selected>직접 ${esc(v)}${unit}</option>`:""}`+
+    o.map(x=>`<option value="${x}" ${has&&x===+v?"selected":""}>${x}${unit}</option>`).join("");
+}
+function picker(id,v,lo,hi,step,unit,ph){
+  return `<div class="pick"><select id="${id}_s" data-pick="${id}" data-lo="${lo}" data-hi="${hi}" data-st="${step}" data-u="${unit}">${pickOpts(v,lo,hi,step,unit)}</select>
+  <input id="${id}" type="number" inputmode="decimal" step="0.1" value="${esc(v??"")}" placeholder="${ph||"직접 입력"}"></div>`;
+}
+const wRange = w => { const c=Math.round(+w||70); return [Math.max(25,c-12), Math.min(200,c+12)]; };
+document.addEventListener("change",e=>{ const s=e.target; if(!s.matches||!s.matches("select[data-pick]")) return;
+  const inp=document.getElementById(s.dataset.pick); if(!inp) return; inp.value=s.value;
+  inp.dispatchEvent(new Event("input",{bubbles:true})); inp.dispatchEvent(new Event("change",{bubbles:true})); });
+document.addEventListener("input",e=>{ const inp=e.target; if(inp.tagName!=="INPUT"||!inp.id) return; const s=document.getElementById(inp.id+"_s"); if(!s||!s.dataset.pick) return;
+  s.innerHTML=pickOpts(inp.value,+s.dataset.lo,+s.dataset.hi,+s.dataset.st,s.dataset.u); });
 /* ───────── 처음 설정 ───────── */
 function renderOnboard(){
   ob = ob || { step:0, p:{ birthYear:"", birthMonth:"", sex:"", height:"", weight:"", weeklySessions:"", level:"", cat:"", sub:"", pos:"", weightClass:"", classLimit:"", screening:{} } };
@@ -256,9 +276,9 @@ function renderOnboard(){
   } else if(st===1){
     h=`<h1>몸과 훈련</h1>
     <div class="row"><div><label class="f">키 (cm)</label><input id="ht" type="number" inputmode="decimal" value="${esc(p.height)}" placeholder="175"></div>
-    <div><label class="f">몸무게 (kg)</label><input id="wt" type="number" inputmode="decimal" value="${esc(p.weight)}" placeholder="70"></div></div>
+    </div><label class="f">몸무게 (kg)</label>${picker("wt",p.weight,30,150,1,"kg")}
     <label class="f">평소 일주일에 몇 번 훈련하나요?</label>
-    <div class="chips">${["0~1","2~3","4~5","6 이상"].map(v=>`<button class="chip ${p.weeklySessions===v?"on":""}" data-ws="${v}">${v}회</button>`).join("")}</div>`;
+    <div class="chips">${["0~1","2~3","4~5","6 이상"].map(v=>`<button class="chip ${p.weeklySessions===v?"on":""}" data-ws="${v}">${v==="6 이상"?"6회 이상":v+"회"}</button>`).join("")}</div>`;
     ok=+p.height>80&&+p.height<250&&+p.weight>20&&+p.weight<250&&p.weeklySessions;
   } else if(st===2){
     h=`<h1>대회나 경기에 나가나요?</h1><p class="mut">대회 일정이 있으면 경기 날짜에 맞춰 조절해요.</p>
@@ -435,8 +455,8 @@ function scaleHtml(k,v,lo,hi,label){ return `<label class="f">${label}</label><d
 const PARTS=["목","어깨","팔꿈치·손목","허리","엉덩이","무릎","발목·발","허벅지","종아리","기타"];
 function checkinForm(x){
   return `<div class="card">
-  <div class="row"><div><label class="f">잔 시간 (시간)</label><input id="sh" type="number" inputmode="decimal" step="0.5" value="${esc(x.sleepH)}" placeholder="7.5"></div>
-  <div><label class="f">아침 몸무게 kg (선택)</label><input id="mw" type="number" inputmode="decimal" step="0.1" value="${esc(x.weight)}" placeholder="${S.profile.weight}"></div></div>
+  <label class="f">잔 시간</label>${picker("sh",x.sleepH,0,14,0.5,"시간")}
+  <label class="f">아침 몸무게 <span class="mut">(선택 · 최근 ${curWeight()}kg)</span></label>${picker("mw",x.weight,...wRange(curWeight()),1,"kg")}
   ${scaleHtml("sleepQ",x.sleepQ,"아주 나쁨","아주 좋음","잠은 어땠나요?")}
   ${scaleHtml("fatigue",x.fatigue,"아주 피곤","아주 상쾌","피로는?")}
   ${scaleHtml("soreness",x.soreness,"아주 심함","전혀 없음","근육통은?")}
@@ -601,8 +621,8 @@ function renderRecovery(){
   const gain=last?last[1]-c.weighKg:0, goal=c.weighKg*0.10, prog=last?Math.max(0,Math.min(100,gain/goal*100)):0;
   $("#app").innerHTML=`<div class="kick">FIGHT CAMP · ${esc(p.subName||p.sub)}</div><h1>계체 후 회복 계산기</h1>
   <p class="mut">계체 뒤 경기 전까지 무엇을 얼마나 먹고 마실지 계산해요. 대회 규정과 팀 의료진의 안내가 먼저예요.</p>
-  <div class="card"><div class="row"><div><label class="f">평소 체중 kg</label><input id="ru" type="number" inputmode="decimal" step="0.1" value="${esc(c.usualKg)}"></div>
-  <div><label class="f">계체 체중 kg</label><input id="rw" type="number" inputmode="decimal" step="0.1" value="${esc(c.weighKg)}" placeholder="${p.classLimit||""}"></div></div>
+  <div class="card"><label class="f">평소 체중</label>${picker("ru",c.usualKg,...wRange(c.usualKg||curWeight()),1,"kg")}
+  <label class="f">계체 체중</label>${picker("rw",c.weighKg,...wRange(p.classLimit||c.usualKg||curWeight()),1,"kg",p.classLimit?`예: ${p.classLimit}`:"")}
   <label class="f">계체 시각</label><input id="rwa" type="datetime-local" value="${esc(c.weighAt)}">
   <label class="f">경기 시각</label><input id="rfa" type="datetime-local" value="${esc(c.fightAt)}"></div>
   ${!ready?`<p class="mut">네 칸을 모두 채우면 계획이 나와요.</p>`:`
@@ -621,8 +641,8 @@ function renderRecovery(){
   <p class="mut">중간중간 몸무게를 재서 넣으면 회복 목표(계체 체중 + 10%) 대비 얼마나 올라왔는지 보여 줘요.</p>
   ${last?`<div class="mlab"><span>지금 ${last[1]}kg · +${r1(gain)}kg</span><span>${Math.round(prog)}%</span></div><div class="track"><i style="width:${prog}%;background:var(--acc)"></i></div>
    <ul class="why">${c.checks.map(([t,kg])=>`<li class="lo">계체 뒤 ${r1(hoursBetween(c.weighAt,t))}시간 · ${kg}kg (+${r1(kg-c.weighKg)})</li>`).join("")}</ul>`:""}
-  <div class="row" style="align-items:flex-end;margin-top:6px"><div><label class="f">지금 몸무게 kg</label><input id="rnow" type="number" inputmode="decimal" step="0.1"></div>
-  <div><button class="btn sm" id="radd" style="margin:0">기록</button></div></div></div>`}
+  <label class="f">지금 몸무게</label>${picker("rnow","",...wRange(last?last[1]:c.weighKg),1,"kg")}
+  <button class="btn sm" id="radd">기록</button></div>`}
   <h2>참고: 급속 감량 범위</h2><div class="card" style="font-size:15px">
   <ul class="why"><li class="lo">계체 72시간 전부터 6.7% · 48시간 5.7% · 24시간 4.4% 이내</li>
   <li class="lo">땀 빼기는 24시간 안 체중의 2~4%, 감독이 있을 때만</li>
