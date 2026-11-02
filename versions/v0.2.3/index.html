@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>컨디션 신호등</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="컨디션 신호등">
+<meta name="theme-color" content="#0e0e0e">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&display=swap">
+<style>
+:root{--bg:#0e0e0e;--card:#181818;--card2:#202020;--ink:#f5f3ee;--mut:#9a978f;--line:#2c2c2c;--gold:#c9a96e;
+--g:#22d07a;--y:#ffd23f;--r:#ff3b30;--gS:#12291d;--yS:#2e2810;--rS:#331412;--chip:#202020;
+--acc:#f5f3ee;--accInk:#111;
+--cond:"Barlow Condensed","Arial Narrow",Pretendard,sans-serif;--disp:"Black Han Sans",Pretendard,sans-serif;color-scheme:dark}
+body.sg-g{--acc:var(--g)}body.sg-y{--acc:var(--y)}body.sg-r{--acc:var(--r);--accInk:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
+body::before{content:"";position:fixed;right:-120px;top:30px;width:300px;height:560px;background:repeating-linear-gradient(135deg,var(--gold) 0 2px,transparent 2px 22px);opacity:.12;transform:skewX(-12deg);pointer-events:none;z-index:0}
+main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom))}
+a{color:var(--gold)}
+h1{font:400 28px/1.15 var(--disp);margin:4px 0 14px;letter-spacing:-.01em}
+h2{font:400 21px/1.2 var(--disp);margin:26px 0 10px}
+.kick{font:italic 800 14px var(--cond);letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
+.card{background:var(--card);border:0;border-top:2px solid var(--line);border-radius:0;padding:16px;margin:0 0 12px}
+.mut{color:var(--mut);font-size:14px}
+label.f{display:block;font-weight:700;margin:16px 0 7px}
+input[type=number],input[type=text],select{width:100%;font:inherit;padding:12px;border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink)}
+input[type=number]{font:italic 800 24px var(--cond)}
+input:focus,select:focus{outline:none;border-bottom-color:var(--acc)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:0;background:var(--chip);color:#cfccc4;border-radius:0;padding:10px 14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.chip.on{background:var(--acc);color:var(--accInk);font-weight:800}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.scale button{padding:10px 0;border:0;border-radius:0;background:var(--chip);color:var(--mut);font:italic 900 22px var(--cond);clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+.scale button.on{background:var(--acc);color:var(--accInk)}
+.ends{display:flex;justify-content:space-between;font-size:12px;color:#6c6a64;margin-top:4px}
+.btn{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;padding:15px 20px;border:0;border-radius:0;background:var(--acc);color:var(--accInk);font:400 20px var(--disp);cursor:pointer;margin-top:16px;transform:skewX(-8deg)}
+.btn::after{content:"›";font-family:var(--cond);font-size:26px;line-height:1}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.btn.danger{background:transparent;color:var(--r);box-shadow:inset 0 0 0 2px var(--r)}
+.btn:disabled{opacity:.35}
+.light{display:flex;gap:14px;align-items:center}
+.lamp{display:flex;flex-direction:column;gap:5px;padding:6px;background:#000;border-radius:14px;flex:none}
+.lamp i{width:16px;height:16px;border-radius:50%;background:#2a2a2a}
+.lamp i.on{background:var(--c);box-shadow:0 0 14px var(--c)}
+.dot{flex:none;width:44px;height:44px;border-radius:50%}
+.dot.g{background:var(--g)}.dot.y{background:var(--y)}.dot.r{background:var(--r)}.dot.n{background:var(--line)}
+.sig{border-top:0;border-left:6px solid var(--c);background:var(--card)}
+.sig.g{--c:var(--g)}.sig.y{--c:var(--y)}.sig.r{--c:var(--r)}
+.sig .t{font:italic 800 13px var(--cond);letter-spacing:.2em;color:var(--c)}
+.big{font:400 32px/1.05 var(--disp);margin:2px 0 0}
+.sig .msg{font-size:14px;color:var(--mut);margin-top:10px}
+ul.why{margin:12px 0 0;padding:0;list-style:none;counter-reset:w}
+ul.why li{counter-increment:w;display:flex;gap:10px;align-items:baseline;font-size:15px;padding:8px 0;border-bottom:1px solid var(--line)}
+ul.why li::before{content:counter(w,decimal-leading-zero);font:italic 800 16px var(--cond);color:var(--gold);flex:none;width:24px}
+ul.why li.hi{color:var(--ink)}ul.why li.lo{color:#cfccc4}
+.wcard{position:relative;margin:4px 0 14px;background:var(--acc);color:var(--accInk);padding:14px 18px 16px;clip-path:polygon(0 0,100% 0,100% 80%,94% 100%,0 100%)}
+.wcard .cap{font:700 12px var(--cond);letter-spacing:.16em;opacity:.7}
+.wcard b{display:block;font:italic 900 56px/.9 var(--cond);margin-top:4px}.wcard b small{font-size:24px}
+.wcard p{font-size:14px;font-weight:700;margin:6px 0 0}
+.stats{display:flex;gap:6px;margin:0 0 12px}.stats div{flex:1;background:var(--card);border-top:2px solid var(--gold);padding:9px 10px 8px}
+.stats b{display:block;font:italic 900 30px/1 var(--cond)}.stats b small{font-size:14px;color:var(--mut)}
+.cap{font:700 11px var(--cond);letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+.banner{border-radius:0;padding:12px 14px;margin:0 0 12px;font-size:15px;border-left:4px solid var(--gold)}
+.banner.warn{background:var(--yS);border-color:var(--y)}.banner.bad{background:var(--rS);border-color:var(--r)}.banner.info{background:var(--card)}
+nav{position:fixed;z-index:5;left:0;right:0;bottom:0;background:#080808;border-top:1px solid #222;display:flex;padding:10px 6px env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;color:#5d5b56;font:inherit;font-size:12px;font-weight:600;padding:2px 0 12px}
+nav button b{display:block;margin:0 auto 6px;width:18px;height:18px;background:#2e2e2e;transform:skewX(-12deg)}
+nav button.on{color:var(--ink)}nav button.on b{background:var(--acc)}
+.hist{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.hist:last-child{border-bottom:0}
+.hd{width:12px;height:12px;border-radius:50%;flex:none}
+.steps{display:flex;gap:4px;margin:0 0 16px}.steps i{flex:1;height:4px;background:var(--line)}.steps i.on{background:var(--gold)}
+.yn{display:flex;gap:8px;margin:8px 0 4px}.yn .chip{flex:1;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+.modal .card{width:100%;max-width:560px;border-radius:0;margin:0;border-top:3px solid var(--gold);padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+small.src{display:block;color:#7a776f;font-size:12px;margin-top:8px}
+svg.spark{width:100%;height:60px;display:block}
+.vl{list-style:none;padding:0;margin:10px 0 0}.vl li{display:flex;gap:8px;margin:6px 0;font-size:15px}
+.vi{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:#111}
+.vi.g{background:var(--g)}.vi.y{background:var(--y)}.vi.r{background:var(--r);color:#fff}
+.mbar{margin-top:10px}.mlab{display:flex;justify-content:space-between;font-size:14px}.track{height:8px;background:var(--chip);overflow:hidden;transform:skewX(-12deg)}.track i{display:block;height:100%}
+.fi{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.x{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:var(--chip);color:var(--mut);font-size:15px}
+.btn.sm{padding:10px 16px;font-size:16px;margin-top:10px}
+.sheet{max-height:88vh;overflow-y:auto}
+.fl{max-height:42vh;overflow-y:auto;border:1px solid var(--line)}
+.fr{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font:inherit;font-size:16px;padding:12px}
+.fr:last-child{border-bottom:0}.fr .mut{flex:none}
+.tag2{font-style:normal;font-size:12px;color:var(--gold);border:1px solid var(--gold);padding:0 6px}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip:disabled{opacity:.4}
+input[type=date],input[type=search]{width:100%;font:inherit;padding:12px;border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav" hidden></nav>
+<div id="modal"></div>
+<script>
+"use strict";
+/* ───────── 저장: 이 폰 안(localStorage)에만 ───────── */
+const KEY = "condition-note-v1";
+const blank = () => ({ profile: null, logs: {}, lastBackup: null, created: today() });
+let S = load();
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || blank(); }catch(e){ return blank(); } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast("저장 공간에 쓰지 못했어요. 백업을 먼저 해 주세요."); } }
+
+/* ───────── 날짜·나이 ───────── */
+function today(d=new Date()){ const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
+function addDays(s,n){ const d=new Date(s+"T12:00:00"); d.setDate(d.getDate()+n); return today(d); }
+function ageOf(p){ const n=new Date(); let a=n.getFullYear()-p.birthYear; if(n.getMonth()+1 < p.birthMonth) a--; return a; }
+function band(p){ const a=ageOf(p);
+  if(a<14) return {id:"u14",name:"유소년 (만 14세 미만)",youth:true};
+  if(a<19) return {id:"youth",name:"유소년",youth:true};
+  if(a<35) return {id:"adult",name:"성인",youth:false};
+  if(a<50) return {id:"masters",name:"성인 · 마스터즈 (35~49세)",youth:false};
+  return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
+
+/* ───────── 종목 ───────── */
+const APP_VER = "0.2.3";
+// subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
+const SPORTS = {
+  "구기": { subs:{
+    "축구":[["골키퍼",["골키퍼"]],["수비",["센터백","풀백·윙백"]],["미드필더",["수비형 미드필더","중앙 미드필더","공격형 미드필더"]],["공격",["윙어","스트라이커"]]],
+    "농구":[["가드",["포인트가드","슈팅가드"]],["포워드",["스몰포워드","파워포워드"]],["센터",["센터"]]],
+    "야구":[["투수",["선발투수","불펜투수"]],["포수",["포수"]],["내야",["1루수","2루수","유격수","3루수"]],["외야",["좌익수","중견수","우익수"]],["타격",["지명타자"]]],
+    "풋살":[["",["골레이로 (골키퍼)","픽소 (수비)","알라 (측면)","피보 (최전방)"]]],
+    "기타 구기":null } },
+  "육상": { subs:{ "단거리":null,"중장거리":null,"도약":null,"투척":null,"기타 육상":null } },
+  "투기": { subs:{ "복싱":null,"MMA":null,"주짓수":null,"레슬링":null,"태권도":null,"유도":null,"기타 투기":null }, weightClass:true },
+  "기타": { subs:{ "기타":null } }
+};
+const SUB_HINT = { "단거리":"100·200·400m, 허들", "중장거리":"800m ~ 10,000m", "도약":"멀리·세단·높이·장대높이뛰기", "투척":"포환·원반·창·해머던지기" };
+// '기타'를 골랐을 때 누르면 이름이 들어가는 예시
+const EXAMPLES = {
+  "기타 구기":[["",["배구","핸드볼","럭비","하키","테니스","배드민턴","탁구","소프트볼","족구","세팍타크로"]]],
+  "기타 육상":[["",["마라톤","경보","혼성경기 (10종·7종)","3000m 장애물","크로스컨트리","산악·트레일 달리기"]]],
+  "기타 투기":[["",["극진가라데","가라데 (WKF)","삼보","킥복싱","무에타이","씨름","우슈 산타"]]],
+  "기타":[["하계",["골프","수영","사이클","트라이애슬론","체조","역도","양궁","사격","조정","카누","스포츠클라이밍"]],
+          ["동계",["스키","스노보드","스피드스케이팅","쇼트트랙","피겨스케이팅","아이스하키","컬링"]],
+          ["그 밖",["볼링","크로스핏","보디빌딩","등산"]]]
+};
+// 포지션별 경기 부담 차이 (참고용 설명, 계산에는 쓰지 않음)
+const POS_NOTE = {
+  "골키퍼":"뛰는 거리는 가장 짧고, 다이빙·점프 같은 짧고 폭발적인 동작이 많아요.",
+  "센터백":"필드 선수 중 고강도 달리기는 가장 적은 편이고, 공중볼·몸싸움이 많아요.",
+  "풀백·윙백":"측면을 오르내리며 고강도 달리기와 스프린트가 많은 편이에요.",
+  "수비형 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "중앙 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "공격형 미드필더":"미드필더는 경기 중 총 이동 거리가 가장 많은 포지션이에요.",
+  "윙어":"측면 선수는 고강도 달리기와 스프린트가 가장 많은 편이에요.",
+  "스트라이커":"총 이동 거리는 중간이지만 짧은 스프린트와 몸싸움 비중이 커요.",
+  "포인트가드":"가드는 이동 거리와 고강도 움직임이 가장 많은 편이에요.",
+  "슈팅가드":"가드는 이동 거리와 고강도 움직임이 가장 많은 편이에요.",
+  "스몰포워드":"포워드는 가드와 센터의 중간 정도 움직임을 보여요.",
+  "파워포워드":"포워드는 가드와 센터의 중간 정도 움직임을 보여요.",
+  "센터":"뛰는 거리는 적은 편이고, 자리싸움·리바운드 같은 몸싸움이 많아요.",
+  "선발투수":"투구 수와 쉬는 날이 가장 중요해요. 팔꿈치·어깨 통증은 꼭 기록해 두세요.",
+  "불펜투수":"연투(이틀 이상 연속 등판)가 쌓이지 않게 투구 수와 쉬는 날을 같이 보세요.",
+  "포수":"쪼그려 앉았다 일어나는 동작이 많아 무릎·허리 부담을 같이 보세요.",
+  "지명타자":"수비 부담이 없고 타격과 주루 위주예요."
+};
+["1루수","2루수","유격수","3루수"].forEach(k=>POS_NOTE[k]="짧은 전력 질주와 순간 방향 전환이 많아요.");
+["좌익수","중견수","우익수"].forEach(k=>POS_NOTE[k]="타구를 쫓는 짧은 전력 질주와 송구가 많아요.");
+const POS_SRC = { "축구":"Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2)",
+  "농구":"Stojanović 등 (2018) Sports Med 48(1)", "야구":"MLB·USA Baseball 'Pitch Smart' 투구 지침" };
+
+// 체급표: [이름, 한계 kg(무제한은 null)]
+const WC = {
+  "복싱":[
+    {org:"아마추어 (World Boxing, 2025~)",
+     m:[["플라이급",50],["밴텀급",55],["라이트급",60],["웰터급",65],["라이트미들급",70],["미들급",75],["라이트헤비급",80],["크루저급",85],["헤비급",90],["슈퍼헤비급",null]],
+     f:[["라이트플라이급",48],["플라이급",51],["밴텀급",54],["페더급",57],["라이트급",60],["웰터급",65],["라이트미들급",70],["미들급",75],["라이트헤비급",80],["헤비급",null]]},
+    {org:"프로",
+     m:[["미니멈급",47.6],["라이트플라이급",49],["플라이급",50.8],["슈퍼플라이급",52.2],["밴텀급",53.5],["슈퍼밴텀급",55.3],["페더급",57.2],["슈퍼페더급",59],["라이트급",61.2],["슈퍼라이트급",63.5],["웰터급",66.7],["슈퍼웰터급",69.9],["미들급",72.6],["슈퍼미들급",76.2],["라이트헤비급",79.4],["크루저급",90.7],["헤비급",null]],
+     f:"m"}],
+  "MMA":[
+    {org:"통합 규정 (UFC 등)",
+     m:[["스트로급",52.2],["플라이급",56.7],["밴텀급",61.2],["페더급",65.8],["라이트급",70.3],["웰터급",77.1],["미들급",83.9],["라이트헤비급",93],["헤비급",120.2]],
+     f:[["스트로급",52.2],["플라이급",56.7],["밴텀급",61.2],["페더급",65.8]]}],
+  "주짓수":[
+    {org:"IBJJF 성인 · 도복 포함",
+     m:[["루스터",57.5],["라이트페더",64],["페더",70],["라이트",76],["미들",82.3],["미디엄헤비",88.3],["헤비",94.3],["슈퍼헤비",100.5],["울트라헤비",null]],
+     f:[["루스터",48.5],["라이트페더",53.5],["페더",58.5],["라이트",64],["미들",69],["미디엄헤비",74],["헤비",79.3],["슈퍼헤비",null]]}],
+  "레슬링":[
+    {org:"자유형 (UWW 시니어)", m:[57,61,65,70,74,79,86,92,97,125], f:[50,53,55,57,59,62,65,68,72,76]},
+    {org:"그레코로만형 (UWW 시니어)", m:[55,60,63,67,72,77,82,87,97,130], f:null}],
+  "태권도":[
+    {org:"세계선수권 (WT)", m:[54,58,63,68,74,80,87,"+87"], f:[46,49,53,57,62,67,73,"+73"]},
+    {org:"올림픽", m:[58,68,80,"+80"], f:[49,57,67,"+67"]}],
+  "유도":[{org:"IJF", m:[60,66,73,81,90,100,"+100"], f:[48,52,57,63,70,78,"+78"]}],
+  "삼보":[{org:"FIAS 성인", m:[58,64,71,79,88,98,"+98"], f:[50,54,59,65,72,80,"+80"]}],
+  "가라데 (WKF)":[{org:"WKF 시니어 겨루기", m:[60,67,75,84,"+84"], f:[50,55,61,68,"+68"]}],
+  "극진가라데":[{org:"단체마다 달라요 · 예: WKO 성인", m:[65,70,75,80,90,"+90"], f:[55,60,65,"+65"]}]
+};
+// 숫자만 있는 표를 [이름, 한계] 형태로 바꿈
+function wcList(set, sex){
+  let L = sex==="여성" ? set.f : set.m;
+  if(L==="m") L=set.m;
+  if(!L) return null;
+  return L.map(x=> Array.isArray(x) ? x : (typeof x==="string" ? [x+"kg급",null] : ["-"+x+"kg급",x]));
+}
+function wcSets(p){
+  const key = p.sub==="기타 투기" ? p.subName : p.sub;
+  return WC[key] || null;
+}
+function b4youth(p){ return !!(p.birthYear&&p.birthMonth&&band(finalProfile(p)).youth); }
+function posList(cat,sub){ const g=SPORTS[cat]&&SPORTS[cat].subs[sub]; return g ? g.flatMap(x=>x[1]) : null; }
+const LEVELS = { hobby:"취미 (대회 안 나감)", amateur:"아마추어 대회 출전", pro:"프로·선수 등록" };
+
+/* ───────── 화면 전환 ───────── */
+let tab = "today", ob = null;
+function go(t){ tab=t; render(); window.scrollTo(0,0); }
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function render(){
+  if(!S.profile){ $("#nav").hidden=true; document.body.className=""; return renderOnboard(); }
+  $("#nav").hidden=false; renderNav();
+  paintSig();
+  ({today:renderToday, history:renderHistory, food:renderFood, video:renderSoon, settings:renderSettings})[tab]();
+}
+function renderNav(){
+  const T=[["today","●","오늘"],["history","▤","기록"],["food","🍚","식단"],["video","▶","영상"],["settings","⚙","설정"]];
+  $("#nav").innerHTML=T.map(([k,i,n])=>`<button class="${tab===k?"on":""}" data-go="${k}"><b></b>${n}</button>`).join("");
+}
+document.addEventListener("click", e=>{ const b=e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
+
+/* ───────── 처음 설정 ───────── */
+function renderOnboard(){
+  ob = ob || { step:0, p:{ birthYear:"", birthMonth:"", sex:"", height:"", weight:"", weeklySessions:"", level:"", cat:"", sub:"", pos:"", weightClass:"", classLimit:"", screening:{} } };
+  const p=ob.p, N=6, st=ob.step;
+  const bar=`<div class="steps">${Array.from({length:N},(_,i)=>`<i class="${i<=st?"on":""}"></i>`).join("")}</div>`;
+  const years=[]; const y=new Date().getFullYear(); for(let i=y-6;i>=y-90;i--) years.push(i);
+  let h="", ok=false;
+  if(st===0){
+    h=`<h1>처음 설정</h1><p class="mut">나이와 성별로 맞는 기준을 골라요. 이 정보는 이 휴대폰 밖으로 나가지 않아요.</p>
+    <label class="f">태어난 해와 달</label>
+    <div class="row"><select id="by"><option value="">년</option>${years.map(v=>`<option ${+p.birthYear===v?"selected":""}>${v}</option>`).join("")}</select>
+    <select id="bm"><option value="">월</option>${Array.from({length:12},(_,i)=>`<option ${+p.birthMonth===i+1?"selected":""}>${i+1}</option>`).join("")}</select></div>
+    <label class="f">성별</label><div class="chips">${["남성","여성"].map(v=>`<button class="chip ${p.sex===v?"on":""}" data-sex="${v}">${v}</button>`).join("")}</div>`;
+    ok=p.birthYear&&p.birthMonth&&p.sex;
+  } else if(st===1){
+    h=`<h1>몸과 훈련</h1>
+    <div class="row"><div><label class="f">키 (cm)</label><input id="ht" type="number" inputmode="decimal" value="${esc(p.height)}" placeholder="175"></div>
+    <div><label class="f">몸무게 (kg)</label><input id="wt" type="number" inputmode="decimal" value="${esc(p.weight)}" placeholder="70"></div></div>
+    <label class="f">평소 일주일에 몇 번 훈련하나요?</label>
+    <div class="chips">${["0~1","2~3","4~5","6 이상"].map(v=>`<button class="chip ${p.weeklySessions===v?"on":""}" data-ws="${v}">${v}회</button>`).join("")}</div>`;
+    ok=+p.height>80&&+p.height<250&&+p.weight>20&&+p.weight<250&&p.weeklySessions;
+  } else if(st===2){
+    h=`<h1>대회나 경기에 나가나요?</h1><p class="mut">대회 일정이 있으면 경기 날짜에 맞춰 조절해요.</p>
+    <div class="chips" style="flex-direction:column">${Object.entries(LEVELS).map(([k,v])=>`<button class="chip ${p.level===k?"on":""}" data-lv="${k}">${v}</button>`).join("")}</div>`;
+    ok=!!p.level;
+  } else if(st===3){
+    const groups=(G,attr,cur)=>G.map(([g,L])=>`${g?`<div class="glab">${g}</div>`:""}<div class="chips">${L.map(v=>`<button class="chip ${cur===v?"on":""}" ${attr}="${esc(v)}">${esc(v)}</button>`).join("")}</div>`).join("");
+    const subs=p.cat?Object.keys(SPORTS[p.cat].subs):[];
+    const PG=p.sub&&SPORTS[p.cat].subs[p.sub];
+    const sets=p.sub&&SPORTS[p.cat].weightClass?wcSets(p):null;
+    const si=sets?Math.min(p.wcSet||0,sets.length-1):0;
+    const wl=sets?wcList(sets[si],p.sex):null;
+    h=`<h1>종목</h1><div class="chips">${Object.keys(SPORTS).map(v=>`<button class="chip ${p.cat===v?"on":""}" data-cat="${v}">${v}</button>`).join("")}</div>
+    ${p.cat&&subs.length>1?`<label class="f">세부 종목</label><div class="chips">${subs.map(v=>`<button class="chip ${p.sub===v?"on":""}" data-sub="${v}">${v}</button>`).join("")}</div>
+      ${SUB_HINT[p.sub]?`<div class="mut" style="margin-top:6px">${SUB_HINT[p.sub]}</div>`:""}`:""}
+    ${p.sub&&EXAMPLES[p.sub]?`<label class="f">종목 이름</label><input id="subname" type="text" value="${esc(p.subName||"")}" placeholder="아래에서 고르거나 직접 써 주세요">
+      <div class="mut" style="margin:8px 0 2px">예시 (누르면 들어가요)</div>${groups(EXAMPLES[p.sub],"data-ex",p.subName)}`:""}
+    ${PG?`<label class="f">포지션</label>${groups(PG,"data-pos",p.pos)}
+      ${POS_NOTE[p.pos]?`<div class="banner info" style="margin-top:10px"><b>${esc(p.pos)}</b> · ${POS_NOTE[p.pos]}<small class="src">참고 설명이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요. 출처: ${POS_SRC[p.sub]}</small></div>`:""}`:""}
+    ${p.sub&&SPORTS[p.cat].weightClass?`<label class="f">체급</label>
+      ${sets&&sets.length>1?`<div class="chips">${sets.map((s,i)=>`<button class="chip ${si===i?"on":""}" data-wcset="${i}">${esc(s.org)}</button>`).join("")}</div>`:""}
+      ${sets&&!wl?`<div class="mut">${esc(sets[si].org)}은 ${esc(p.sex)} 체급이 없어요. 아래에 직접 써 주세요.</div>`:""}
+      ${wl?`${sets.length===1?`<div class="mut">${esc(sets[0].org)}</div>`:""}<div class="chips" style="margin-top:8px">${wl.map(([n,k],i)=>`<button class="chip ${p.weightClass===n&&String(p.classLimit)===String(k??"")?"on":""}" data-wc="${i}">${esc(n)}${k!=null&&!/kg/.test(n)?` · ${k}kg`:""}</button>`).join("")}</div>`:""}
+      ${!sets?`<div class="mut">${p.sub==="기타 투기"?"위 예시 중 삼보·가라데·극진가라데는 체급표가 나와요. ":""}체급표가 없는 종목은 아래에 직접 써 주세요.</div>`:""}
+      <div class="row"><div><label class="f">체급 이름</label><input id="wc" type="text" value="${esc(p.weightClass)}" placeholder="예: 라이트급"></div>
+      <div><label class="f">한계 kg</label><input id="wl" type="number" inputmode="decimal" step="0.1" value="${esc(p.classLimit)}" placeholder="무제한이면 비워 두기"></div></div>
+      <div class="mut" style="margin-top:6px">목록에 없거나 대회 규정이 다르면 직접 고쳐 주세요.${b4youth(p)?" 표는 성인 기준이에요.":""}</div>`:""}`;
+    const pl=posList(p.cat,p.sub);
+    ok=p.cat&&p.sub&&(!pl||pl.includes(p.pos));
+  } else if(st===4){
+    const Q=[["heart","의사에게 심장 질환이나 고혈압 진단을 받은 적이 있나요?"],["chest","운동하거나 쉴 때 가슴 통증·답답함을 느낀 적이 있나요?"],["faint","어지러워서 균형을 잃거나 정신을 잃은 적이 있나요?"]];
+    h=`<h1>운동 전 건강 확인</h1><p class="mut">하나라도 '예'면 고강도 운동 전에 진료를 받아 보라고 안내해요. 진단이 아니에요.</p>
+    ${Q.map(([k,q])=>`<div class="card"><div>${q}</div><div class="yn">${["예","아니요"].map(v=>`<button class="chip ${p.screening[k]===v?"on":""}" data-scr="${k}" data-v="${v}">${v}</button>`).join("")}</div></div>`).join("")}`;
+    ok=Q.every(([k])=>p.screening[k]);
+  } else {
+    const prof=finalProfile(p), b=band(prof);
+    h=`<h1>준비됐어요</h1>
+    <div class="card"><div><b>${b.name}</b> · 만 ${ageOf(prof)}세 · ${prof.sex}</div>
+    <div class="mut">${esc(prof.cat)} · ${esc(prof.subName||prof.sub)}${prof.pos?" · "+esc(prof.pos):""}${prof.weightClass?" · "+esc(prof.weightClass)+(prof.classLimit?` (${prof.classLimit}kg)`:""):""} · ${LEVELS[prof.level]}</div></div>
+    ${b.youth?`<div class="banner info">유소년은 <b>감량·수분 감량 기능이 열리지 않아요.</b> 성장기에는 잘 먹고 잘 쉬는 게 우선이에요.${b.id==="u14"?" 만 14세 미만은 보호자와 함께 써 주세요.":""}</div>`:""}
+    ${!b.youth&&prof.cat==="투기"&&prof.level!=="hobby"?`<div class="banner info">투기 종목 대회 출전으로 설정돼서, 나중에 <b>계체 후 회복 계산기</b>가 열려요.</div>`:""}
+    ${prof.screeningFlag?`<div class="banner bad">건강 확인에 '예'가 있어요. <b>고강도 운동 전에 진료를 받아 보세요.</b></div>`:""}
+    <p class="mut">이 앱은 의학적 진단을 하지 않아요. 기록을 바탕으로 참고할 신호를 보여 줘요.</p>`;
+    ok=true;
+  }
+  $("#app").innerHTML=bar+h+`<button class="btn" id="next" ${ok?"":"disabled"}>${st<N-1?"다음":"시작하기"}</button>${st>0?`<button class="btn ghost" id="prev">이전</button>`:""}`;
+  bindOnboard();
+}
+function finalProfile(p){
+  const prof={...p, birthYear:+p.birthYear, birthMonth:+p.birthMonth, height:+p.height, weight:+p.weight, classLimit:p.classLimit?+p.classLimit:null};
+  prof.screeningFlag=Object.values(p.screening).includes("예");
+  const sets=prof.cat==="투기"?wcSets(prof):null;
+  prof.classOrg = sets&&prof.weightClass ? sets[Math.min(prof.wcSet||0,sets.length-1)].org : "";
+  return prof;
+}
+function bindOnboard(){
+  const p=ob.p, re=()=>renderOnboard();
+  const on=(sel,fn)=>document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{fn(b);re();});
+  const inp=(id,k)=>{ const el=$("#"+id); if(el) el.oninput=()=>{ p[k]=el.value; $("#next").disabled=!okStep(); }; };
+  const sel=(id,k)=>{ const el=$("#"+id); if(el) el.onchange=()=>{ p[k]=el.value; re(); }; };
+  sel("by","birthYear"); sel("bm","birthMonth");
+  on("[data-sex]",b=>p.sex=b.dataset.sex); on("[data-ws]",b=>p.weeklySessions=b.dataset.ws);
+  on("[data-lv]",b=>p.level=b.dataset.lv);
+  const clearWC=()=>{ p.weightClass=""; p.classLimit=""; p.wcSet=0; };
+  on("[data-cat]",b=>{ if(p.cat!==b.dataset.cat){ p.cat=b.dataset.cat; const ks=Object.keys(SPORTS[p.cat].subs); p.sub=ks.length===1?ks[0]:""; p.pos=""; p.subName=""; clearWC(); } });
+  on("[data-sub]",b=>{ if(p.sub!==b.dataset.sub){ p.sub=b.dataset.sub; p.pos=""; p.subName=""; clearWC();
+    if(p.sub==="복싱") p.wcSet = p.level==="pro" ? 1 : 0; } });
+  on("[data-pos]",b=>p.pos=b.dataset.pos);
+  on("[data-ex]",b=>{ if(p.subName!==b.dataset.ex){ p.subName=b.dataset.ex; clearWC(); } });
+  on("[data-wcset]",b=>{ p.wcSet=+b.dataset.wcset; p.weightClass=""; p.classLimit=""; });
+  on("[data-wc]",b=>{ const sets=wcSets(p), L=wcList(sets[Math.min(p.wcSet||0,sets.length-1)],p.sex), x=L[+b.dataset.wc];
+    p.weightClass=x[0]; p.classLimit=x[1]==null?"":String(x[1]); });
+  on("[data-scr]",b=>p.screening[b.dataset.scr]=b.dataset.v);
+  inp("ht","height"); inp("wt","weight"); inp("wc","weightClass"); inp("wl","classLimit"); inp("subname","subName");
+  $("#next").onclick=()=>{ if(ob.step<5){ob.step++;re();window.scrollTo(0,0);} else { S.profile=finalProfile(p); ob=null; save(); go("today"); } };
+  const pv=$("#prev"); if(pv) pv.onclick=()=>{ob.step--;re();};
+  function okStep(){ return ob.step!==1 || (+p.height>80&&+p.height<250&&+p.weight>20&&+p.weight<250&&p.weeklySessions); }
+}
+
+/* ───────── 신호등 (판단 근거를 같이 보여 줌) ───────── */
+const wsum = l => (l.sleepQ||0)+(l.fatigue||0)+(l.soreness||0)+(l.stress||0);
+const tload = l => (l.trainMin||0)*(l.rpe||0);          // 세션 RPE = 시간(분) × 힘든 정도 (Foster 2001)
+function signal(date){
+  const p=S.profile, b=band(p), L=S.logs[date]; if(!L||!L.sleepQ) return null;
+  const masters = b.id==="masters"||b.id==="m50";
+  let lv=0; const why=[]; const up=(n,t)=>{ lv=Math.max(lv,n); why.push([n,t]); };
+  // 1) 통증
+  if(L.pain===3) up(2,"심한 통증이 있어요.");
+  else if(L.pain===2) up(1,"중간 정도 통증이 있어요.");
+  // 2) 컨디션 점수: 내 평소(지난 28일)와 비교
+  const past=[]; for(let i=1;i<=28;i++){ const x=S.logs[addDays(date,-i)]; if(x&&x.sleepQ) past.push(wsum(x)); }
+  const w=wsum(L);
+  if(past.length>=7){
+    const m=past.reduce((a,c)=>a+c,0)/past.length, sd=Math.max(1,Math.sqrt(past.reduce((a,c)=>a+(c-m)**2,0)/past.length));
+    const z=(w-m)/sd, yz=masters?-0.75:-1;
+    if(z<=-1.5) up(2,`컨디션 점수(${w}/20)가 평소(${m.toFixed(1)})보다 많이 낮아요.`);
+    else if(z<=yz) up(1,`컨디션 점수(${w}/20)가 평소(${m.toFixed(1)})보다 낮아요.`);
+  } else {
+    if(w<=8) up(2,`컨디션 점수가 매우 낮아요 (${w}/20).`); else if(w<=11) up(1,`컨디션 점수가 낮은 편이에요 (${w}/20).`);
+  }
+  // 3) 잠
+  const need=b.youth?8:7;
+  if(L.sleepH && L.sleepH<need-1) up(1,`잠이 ${L.sleepH}시간으로 권장(${b.youth?"8~10":"7"}시간 이상)보다 적어요.`);
+  // 4) 훈련량 급증: 최근 7일 합 ÷ 최근 28일 주평균 (참고 지표)
+  let acute=0, chronic=0, days=0;
+  for(let i=0;i<28;i++){ const x=S.logs[addDays(date,-i)]; if(x){ days++; const v=tload(x); chronic+=v; if(i<7) acute+=v; } }
+  if(days>=21 && chronic>0){
+    const ratio=acute/(chronic/4), yr=masters?1.2:1.3;
+    if(ratio>1.5) up(2,`이번 주 훈련량이 평소의 ${ratio.toFixed(1)}배로 급하게 늘었어요.`);
+    else if(ratio>yr) up(1,`이번 주 훈련량이 평소의 ${ratio.toFixed(1)}배로 늘었어요.`);
+  }
+  // 5) 몸무게 급변 (지난 7일 평균 대비)
+  if(L.weight){ const ws=[]; for(let i=1;i<=7;i++){const x=S.logs[addDays(date,-i)]; if(x&&x.weight) ws.push(x.weight);}
+    if(ws.length>=3){ const m=ws.reduce((a,c)=>a+c,0)/ws.length, d=(L.weight-m)/m*100;
+      if(d<=-2) up(1,`몸무게가 평소보다 ${Math.abs(d).toFixed(1)}% 줄었어요. 덜 먹었거나 물이 부족할 수 있어요.`); } }
+  if(!why.length) why.push([0,"평소와 비슷하거나 좋아요."]);
+  const msg=["평소대로 훈련해도 좋아요.","강도를 조금 낮추거나 회복(잠·식사·수분)에 신경 써 주세요.","오늘은 가볍게 하거나 쉬어 가세요. 심한 통증이 계속되면 진료를 받아 보세요."][lv];
+  return { lv, color:["g","y","r"][lv], name:["초록","노랑","빨강"][lv], msg, why, baseline:past.length };
+}
+
+/* ───────── 오늘 ───────── */
+let draft=null;
+// 오늘 신호 색을 버튼·선택칸·탭 강조색으로 씀 (신호 전에는 흰색)
+function paintSig(){ const L=S.logs[today()], s=L&&L.sleepQ?signal(today()):null; document.body.className = s ? "sg-"+s.color : ""; }
+const SIG_UI = [["GO","평소대로"],["CAUTION","강도 낮춰서"],["STOP","오늘은 쉬기"]];
+function dateTitle(d){ const x=new Date(d+"T12:00:00"); return `${x.getMonth()+1}월 ${x.getDate()}일 ${"일월화수목금토"[x.getDay()]}요일`; }
+function kicker(p){ return [p.cat==="투기"&&p.level!=="hobby"?"FIGHT CAMP":"", p.subName||p.sub, p.pos].filter(Boolean).map(esc).join(" · "); }
+function weighCard(p,L){
+  if(p.cat!=="투기"||!p.classLimit||band(p).youth) return "";
+  const w=(L&&L.weight)||curWeight(), gap=Math.round((w-p.classLimit)*10)/10;
+  return `<div class="wcard"><div class="cap">WEIGH-IN · ${esc(p.weightClass||"")} ${p.classLimit}KG</div><b>${w}<small>kg</small></b>
+  <p>${gap>0?`한계까지 ${gap}kg`:`한계보다 ${Math.abs(gap)}kg 가벼워요`}${L&&L.weight?"":" · 최근 기록 기준"}</p></div>`;
+}
+function renderToday(){
+  paintSig();
+  const d=today(), L=S.logs[d], p=S.profile, b=band(p);
+  let top=`<div class="kick">${kicker(p)}</div>`;
+  const daysSinceBackup = S.lastBackup ? Math.floor((new Date(d)-new Date(S.lastBackup))/864e5) : Math.floor((new Date(d)-new Date(S.created))/864e5);
+  if(daysSinceBackup>=14) top+=`<div class="banner warn">백업한 지 ${daysSinceBackup}일 지났어요. <a href="#" data-go="settings">설정에서 기록 내보내기</a></div>`;
+  if(p.screeningFlag) top+=`<div class="banner bad">건강 확인에 '예'가 있었어요. 고강도 운동 전에 진료를 받아 보세요.</div>`;
+  if(!L||!L.sleepQ){
+    draft = draft || { sleepH:"", sleepQ:0, fatigue:0, soreness:0, stress:0, pain:0, painPart:"", weight:"" };
+    $("#app").innerHTML=top+`<h1>오늘 몸 상태</h1><p class="mut">30초면 끝나요. 아침에 하면 가장 정확해요.</p>${checkinForm(draft,false)}`;
+    bindCheckin(false);
+  } else {
+    const s=signal(d);
+    $("#app").innerHTML=top+`<h1>${dateTitle(d)}</h1>${weighCard(p,L)}
+    <div class="card sig ${s.color}"><div class="light"><div class="lamp">${[2,1,0].map(i=>`<i class="${s.lv===i?"on":""}"></i>`).join("")}</div>
+    <div><div class="t">${SIG_UI[s.lv][0]} · ${s.name}</div><p class="big">${SIG_UI[s.lv][1]}</p></div></div>
+    <div class="msg">${s.msg}</div>
+    <ul class="why">${s.why.map(([n,t])=>`<li class="${n?"hi":"lo"}">${t}</li>`).join("")}</ul>
+    ${s.baseline<7?`<small class="src">평소 기준을 만드는 중이에요 (${s.baseline}/7일). 기록이 쌓이면 내 평소와 비교해요.</small>`:""}
+    <small class="src">참고 신호예요. 진단이 아니에요. <a href="#" data-go="settings">판단 기준 보기</a></small></div>
+    <h2>오늘 훈련</h2>${trainForm(L)}
+    <h2>식단</h2>${dietCard()}
+    <button class="btn ghost" id="editck">아침 체크인 고치기</button>`;
+    bindTrain(L);
+    $("#editck").onclick=()=>{ draft={...L}; delete S.logs[d].sleepQ; renderTodayEdit(L); };
+  }
+}
+function renderTodayEdit(L){ paintSig(); $("#app").innerHTML=`<div class="kick">MORNING CHECK-IN</div><h1>체크인 고치기</h1>${checkinForm(draft,true)}`; bindCheckin(true,L); }
+function scaleHtml(k,v,lo,hi,label){ return `<label class="f">${label}</label><div class="scale">${[1,2,3,4,5].map(n=>`<button data-k="${k}" data-n="${n}" class="${v===n?"on":""}">${n}</button>`).join("")}</div><div class="ends"><span>${lo}</span><span>${hi}</span></div>`; }
+const PARTS=["목","어깨","팔꿈치·손목","허리","엉덩이","무릎","발목·발","허벅지","종아리","기타"];
+function checkinForm(x){
+  return `<div class="card">
+  <div class="row"><div><label class="f">잔 시간 (시간)</label><input id="sh" type="number" inputmode="decimal" step="0.5" value="${esc(x.sleepH)}" placeholder="7.5"></div>
+  <div><label class="f">아침 몸무게 kg (선택)</label><input id="mw" type="number" inputmode="decimal" step="0.1" value="${esc(x.weight)}" placeholder="${S.profile.weight}"></div></div>
+  ${scaleHtml("sleepQ",x.sleepQ,"아주 나쁨","아주 좋음","잠은 어땠나요?")}
+  ${scaleHtml("fatigue",x.fatigue,"아주 피곤","아주 상쾌","피로는?")}
+  ${scaleHtml("soreness",x.soreness,"아주 심함","전혀 없음","근육통은?")}
+  ${scaleHtml("stress",x.stress,"아주 심함","전혀 없음","스트레스는?")}
+  <label class="f">아픈 곳이 있나요?</label>
+  <div class="chips">${["없음","약간","중간","심함"].map((v,i)=>`<button class="chip ${x.pain===i?"on":""}" data-pain="${i}">${v}</button>`).join("")}</div>
+  ${x.pain>0?`<label class="f">어디가 아픈가요?</label><div class="chips">${PARTS.map(v=>`<button class="chip ${x.painPart===v?"on":""}" data-part="${v}">${v}</button>`).join("")}</div>`:""}
+  </div><button class="btn" id="saveck" ${x.sleepQ&&x.fatigue&&x.soreness&&x.stress&&x.sleepH?"":"disabled"}>저장하고 신호 보기</button>`;
+}
+function bindCheckin(edit,L){
+  const re=()=>{ edit?renderTodayEdit(L):renderToday(); };
+  document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ draft[b.dataset.k]=+b.dataset.n; re(); });
+  document.querySelectorAll("[data-pain]").forEach(b=>b.onclick=()=>{ draft.pain=+b.dataset.pain; if(!draft.pain) draft.painPart=""; re(); });
+  document.querySelectorAll("[data-part]").forEach(b=>b.onclick=()=>{ draft.painPart=b.dataset.part; re(); });
+  $("#sh").oninput=e=>{ draft.sleepH=e.target.value; $("#saveck").disabled=!(draft.sleepQ&&draft.fatigue&&draft.soreness&&draft.stress&&draft.sleepH); };
+  $("#mw").oninput=e=>{ draft.weight=e.target.value; };
+  $("#saveck").onclick=()=>{
+    const d=today(); const prev=S.logs[d]||{};
+    S.logs[d]={...prev, sleepH:+draft.sleepH, sleepQ:draft.sleepQ, fatigue:draft.fatigue, soreness:draft.soreness, stress:draft.stress, pain:draft.pain, painPart:draft.painPart, weight:draft.weight?+draft.weight:null};
+    draft=null; save(); renderToday();
+  };
+}
+function trainForm(L){
+  return `<div class="card"><p class="mut">훈련이 끝나면 적어 주세요. 쉬는 날이면 비워 두면 돼요.</p>
+  <label class="f">훈련 시간 (분)</label><input id="tm" type="number" inputmode="numeric" value="${L.trainMin||""}" placeholder="60">
+  <label class="f">얼마나 힘들었나요? (1~10)</label>
+  <div class="scale" style="grid-template-columns:repeat(5,1fr)">${Array.from({length:10},(_,i)=>`<button data-rpe="${i+1}" class="${L.rpe===i+1?"on":""}">${i+1}</button>`).join("")}</div>
+  <div class="ends"><span>1 아주 쉬움</span><span>10 최대로 힘듦</span></div>
+  ${L.trainMin&&L.rpe?`<small class="src">오늘 훈련량 ${tload(L)} (시간 × 힘든 정도)</small>`:""}</div>`;
+}
+function bindTrain(L){
+  const d=today();
+  document.querySelectorAll("[data-rpe]").forEach(b=>b.onclick=()=>{ S.logs[d].rpe=+b.dataset.rpe; save(); renderToday(); });
+  $("#tm").onchange=e=>{ S.logs[d].trainMin=e.target.value?+e.target.value:0; save(); renderToday(); };
+}
+
+/* ───────── 기록 ───────── */
+function renderHistory(){
+  const d=today(), rows=[], loads=[];
+  for(let i=27;i>=0;i--){ const k=addDays(d,-i); loads.push(S.logs[k]?tload(S.logs[k]):0); }
+  for(let i=0;i<14;i++){ const k=addDays(d,-i), L=S.logs[k]; if(!L) continue; const s=L.sleepQ?signal(k):null;
+    rows.push(`<div class="hist"><span class="hd" style="background:var(--${s?s.color:"line"})"></span><div style="flex:1"><b>${k.slice(5).replace("-","/")}</b>
+    <span class="mut"> · 컨디션 ${L.sleepQ?wsum(L)+"/20":"-"} · 잠 ${L.sleepH??"-"}시간${L.weight?" · "+L.weight+"kg":""}${L.trainMin?" · 훈련 "+L.trainMin+"분×"+(L.rpe||"-"):""}${L.pain?" · 통증 "+["","약간","중간","심함"][L.pain]+(L.painPart?"("+L.painPart+")":""):""}</span></div></div>`); }
+  const mx=Math.max(1,...loads);
+  const bars=loads.map((v,i)=>`<rect x="${i*(100/28)+0.4}" y="${60-v/mx*56}" width="${100/28-0.8}" height="${v/mx*56}" rx="0.6" fill="var(--acc)" opacity="${i>=21?1:.45}"/>`).join("");
+  $("#app").innerHTML=`<div class="kick">HISTORY</div><h1>기록</h1>
+  <div class="card"><b>최근 4주 훈련량</b><svg class="spark" viewBox="0 0 100 60" preserveAspectRatio="none">${bars}</svg><small class="src">진한 막대가 최근 7일이에요.</small></div>
+  <div class="card">${rows.length?rows.join(""):`<p class="mut">아직 기록이 없어요.</p>`}</div>`;
+}
+
+/* ───────── 준비 중 탭 ───────── */
+function renderSoon(){
+  const t = ["영상","훈련 영상 느리게 보기, 한 프레임씩, 두 영상 나란히 비교가 4단계에 들어와요."];
+  $("#app").innerHTML=`<div class="kick">VIDEO</div><h1>${t[0]}</h1><div class="card"><p>${t[1]}</p><p class="mut">준비 중이에요.</p></div>`;
+}
+
+/* ───────── 설정·백업 ───────── */
+function renderSettings(){
+  const p=S.profile, b=band(p);
+  $("#app").innerHTML=`<div class="kick">SETTINGS</div><h1>설정</h1>
+  <div class="card"><b>${b.name}</b> · 만 ${ageOf(p)}세 · ${p.sex} · ${p.height}cm · ${p.weight}kg<div class="mut">${esc(p.cat)} · ${esc(p.subName||p.sub)}${p.pos?" · "+esc(p.pos):""}${p.weightClass?" · "+esc(p.weightClass)+(p.classLimit?` (${p.classLimit}kg)`:""):""} · ${LEVELS[p.level]}</div>
+  <button class="btn ghost" id="reprof">처음 설정 다시 하기 (기록은 그대로)</button></div>
+  <h2>백업</h2><div class="card"><p class="mut">기록은 이 휴대폰에만 있어요. 폰을 바꾸거나 사파리 데이터를 지우면 사라질 수 있으니 가끔 내보내 두세요.${S.lastBackup?` 마지막 백업: ${S.lastBackup}`:""}</p>
+  <button class="btn" id="exj">기록 내보내기 (복원용 파일)</button>
+  <button class="btn ghost" id="exc">엑셀용 파일(CSV) 내보내기</button>
+  <button class="btn ghost" id="imp">기록 가져오기</button><input type="file" id="impf" accept=".json,application/json" hidden></div>
+  <h2>판단 기준</h2><div class="card" style="font-size:15px">
+  <p><b>컨디션 점수</b>: 잠·피로·근육통·스트레스를 1~5로 매겨 더한 값(20점 만점). 7일 이상 쌓이면 내 지난 28일 평균과 비교해요. 운동선수의 주관적 컨디션 설문 방식을 단순하게 옮겼어요.<small class="src">Hooper & Mackinnon (1995) Sports Medicine 20(5); McLean 등 (2010) 웰니스 설문</small></p>
+  <p><b>훈련량</b>: 훈련 시간(분) × 힘든 정도(1~10). '세션 RPE'라고 불리는 방법이에요.<small class="src">Foster 등 (2001) J Strength Cond Res 15(1)</small></p>
+  <p><b>훈련량 급증</b>: 최근 7일 합이 최근 4주 주평균의 몇 배인지 봐요. 21일 이상 기록이 있어야 계산해요. 이 비율은 부상 예측력에 논란이 있어서 <b>참고 지표</b>로만 써요.<small class="src">Gabbett (2016) Br J Sports Med 50; 비판: Impellizzeri 등 (2020) IJSPP 15(6)</small></p>
+  <p><b>잠</b>: 성인 7시간 이상, 청소년 8~10시간 권장 기준에서 1시간 넘게 모자라면 노랑.<small class="src">미국수면의학회(AASM) 권고</small></p>
+  <p><b>나이</b>: 35세 이상은 회복이 느려지는 점을 반영해 노랑 기준을 조금 더 일찍 잡아요.</p>
+  <p><b>포지션 설명</b>: 처음 설정에서 보여 주는 포지션별 경기 부담 차이는 참고용이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요.<small class="src">축구: Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2) · 농구: Stojanović 등 (2018) Sports Med 48(1) · 야구: MLB·USA Baseball 'Pitch Smart'</small></p>
+  <p><b>체급표</b>: 복싱 World Boxing(2025~)·프로 통상 체급, MMA 통합 규정, 주짓수 IBJJF(도복 포함), 레슬링 UWW, 태권도 WT, 유도 IJF, 삼보 FIAS, 가라데 WKF. 극진가라데는 단체마다 달라 WKO 예시예요. 대회 규정이 다르면 직접 고쳐 쓰세요.</p>
+  <p class="mut">이 앱은 의학적 진단·치료를 하지 않아요. 몸에 이상이 있으면 의료진과 상담하세요.</p></div>
+  <h2>식단 목표 기준</h2><div class="card" style="font-size:15px"><p>하루 열량은 기초대사량(Mifflin-St Jeor 공식) × 주간 훈련 횟수 활동계수에서 시작해요. 단백질은 체중 1kg당 1.6g(감량 2.0g, 증량 1.8g, 청소년 1.5g), 탄수화물은 그날 훈련 시간에 따라 1kg당 3~8g이에요. 감량은 주 1%, 증량은 주 0.5%를 넘지 않게 막아요.<small class="src">Thomas 등 (2016) Med Sci Sports Exerc 48(3); Jäger 등 (2017) JISSN 14:20; Helms 등 (2014) JISSN 11:20; Mifflin 등 (1990) Am J Clin Nutr 51(2)</small></p><p>음식 영양값은 식품의약품안전처 식품영양성분 통합DB(공공데이터포털, 2026-09-29 기준)에서 가져왔어요.</p></div>
+  <h2>데이터</h2><div class="card"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div>
+  <p class="mut" style="text-align:center">컨디션 신호등 v${APP_VER}</p>`;
+  $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), classLimit:S.profile.classLimit??"", subName:S.profile.subName||"", screening:{...S.profile.screening}}}; S.profile=null; render(); };
+  $("#exj").onclick=()=>{ download(`컨디션신호등_백업_${today()}.json`, JSON.stringify({app:"condition-note",version:1,exported:new Date().toISOString(),data:S},null,1), "application/json"); S.lastBackup=today(); save(); };
+  $("#exc").onclick=()=>{ download(`컨디션신호등_기록_${today()}.csv`, toCSV(), "text/csv"); };
+  $("#imp").onclick=()=>$("#impf").click();
+  $("#impf").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const j=JSON.parse(await f.text()); if(j.app!=="condition-note"||!j.data||!j.data.logs) throw 0;
+      ask(`백업 파일의 기록 ${Object.keys(j.data.logs).length}일치로 바꿀까요? 지금 이 폰의 기록은 덮어써져요.`,"가져오기",()=>{ S=j.data; save(); toast("가져왔어요."); go("today"); });
+    }catch(_){ toast("이 앱의 백업 파일이 아니에요."); } e.target.value=""; };
+  $("#wipe").onclick=()=>ask("이 폰의 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 내보내기를 권해요.","모두 지우기",()=>{ S=blank(); save(); tab="today"; render(); });
+}
+function toCSV(){
+  const h=["날짜","잔시간","잠","피로","근육통","스트레스","컨디션점수","통증","통증부위","몸무게","훈련분","힘든정도","훈련량","신호"];
+  const rows=Object.keys(S.logs).sort().map(k=>{ const L=S.logs[k], s=L.sleepQ?signal(k):null;
+    return [k,L.sleepH??"",L.sleepQ??"",L.fatigue??"",L.soreness??"",L.stress??"",L.sleepQ?wsum(L):"",["없음","약간","중간","심함"][L.pain||0],L.painPart||"",L.weight??"",L.trainMin??"",L.rpe??"",tload(L)||"",s?s.name:""]; });
+  return "﻿"+[h,...rows].map(r=>r.map(v=>/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:v).join(",")).join("\n");
+}
+function download(name, text, type){
+  const blob=new Blob([text],{type});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
+function ask(text, okLabel, fn){
+  $("#modal").innerHTML=`<div class="modal"><div class="card"><p>${esc(text)}</p><button class="btn danger" id="mok">${okLabel}</button><button class="btn ghost" id="mno">취소</button></div></div>`;
+  $("#mok").onclick=()=>{ $("#modal").innerHTML=""; fn(); }; $("#mno").onclick=()=>$("#modal").innerHTML="";
+}
+function toast(t){ $("#modal").innerHTML=`<div class="modal" style="align-items:center;background:transparent;pointer-events:none"><div class="card" style="border-radius:14px;max-width:320px;text-align:center">${esc(t)}</div></div>`; setTimeout(()=>$("#modal").innerHTML="",1800); }
+
+/* ───────── 2차: 식단 + 목표 ─────────
+   하루 목표 = 기초대사량(Mifflin-St Jeor) × 활동계수 ± 목표 조정
+   단백질·탄수화물은 체중 1kg당 g으로 정하고, 남는 열량을 지방에 배분해요. */
+const MEALS=["아침","점심","저녁","간식"], SHARE={아침:.25,점심:.3,저녁:.3,간식:.15};
+const AF={"0~1":1.4,"2~3":1.55,"4~5":1.7,"6 이상":1.85};
+const r0=x=>Math.round(x), r1=x=>Math.round(x*10)/10;
+function curWeight(date=today()){ for(let i=0;i<14;i++){ const L=S.logs[addDays(date,-i)]; if(L&&L.weight) return L.weight; } return S.profile.weight; }
+function goalOf(){ return S.goal||{type:"maintain"}; }
+function weeksTo(d){ return d? Math.max(0.5,(new Date(d+"T12:00:00")-new Date(today()+"T12:00:00"))/6048e5) : null; }
+function plan(g=goalOf(), date=today()){
+  const p=S.profile, b=band(p), w=curWeight(date), a=ageOf(p);
+  const bmr=10*w+6.25*p.height-5*a+(p.sex==="남성"?5:-161);
+  const tdee=bmr*(AF[p.weeklySessions]||1.55);
+  const notes=[], warn=[]; let rate=0, adj=0, type=g.type;
+  if(type==="lose" && b.youth){ type="maintain"; warn.push("성장기에는 감량 목표를 세우지 않아요. 잘 먹고 잘 쉬는 게 우선이에요. 체중이 걱정되면 보호자와 함께 소아청소년과·스포츠의학 진료를 받아 보세요."); }
+  if(type==="lose"){
+    const diff=g.targetKg? w-g.targetKg : null, wk=weeksTo(g.date);
+    rate = diff&&wk ? diff/wk : w*0.005;              // 기한이 있으면 필요한 속도, 없으면 주 0.5%
+    if(diff!==null && diff<=0){ warn.push("목표 체중이 지금보다 무거워요. 증량 목표로 바꿔 주세요."); rate=0; }
+    const pct=rate/w*100;
+    if(pct>1){ warn.push(`이 기한이면 주 ${r1(rate)}kg(체중의 ${r1(pct)}%)씩 빼야 해요. 근육이 빠지기 쉬운 속도라 주 1%로 맞췄어요. 기한을 늘리거나 목표를 낮춰 주세요.`); rate=w*0.01; }
+    else if(pct>0.7) notes.push(`주 ${r1(rate)}kg(체중의 ${r1(pct)}%) 감량. 빠른 편이라 컨디션 신호를 같이 봐 주세요.`);
+    else if(rate>0) notes.push(`주 ${r1(rate)}kg(체중의 ${r1(pct)}%) 감량 속도예요.`);
+    adj=-Math.min(rate*7700/7, 1000);
+  } else if(type==="gain"){
+    const diff=g.targetKg? g.targetKg-w : null, wk=weeksTo(g.date);
+    rate = diff&&wk ? diff/wk : w*0.0025;
+    if(diff!==null && diff<=0){ warn.push("목표 체중이 지금보다 가벼워요. 감량 목표로 바꿔 주세요."); rate=0; }
+    const pct=rate/w*100;
+    if(pct>0.5){ warn.push(`이 기한이면 주 ${r1(rate)}kg씩 늘려야 해요. 근육보다 지방이 늘기 쉬운 속도라 주 0.5%로 맞췄어요.`); rate=w*0.005; }
+    else if(rate>0) notes.push(`주 ${r1(rate)}kg 증량 속도예요.`);
+    adj=Math.min(rate*7700/7, 500);
+  }
+  if(g.targetKg && g.date && rate>0){ notes.push(`${g.date.slice(5).replace("-","/")}까지 ${g.targetKg}kg 목표.`); }
+  const floor=Math.max(p.sex==="남성"?1500:1200, bmr);
+  let kcal=tdee+adj;
+  if(kcal<floor){ warn.push(`계산값이 최소 섭취량보다 낮아서 ${r0(floor)}kcal로 올렸어요. 이보다 덜 먹으면 훈련·회복·호르몬에 문제가 생길 수 있어요.`); kcal=floor; }
+  // 탄수화물: 오늘 훈련 시간 기준 (기록 없으면 평소 횟수로 추정)
+  const L=S.logs[date]; const avgMin={"0~1":10,"2~3":30,"4~5":55,"6 이상":80}[p.weeklySessions]||30;
+  const min = L&&L.trainMin!=null&&L.trainMin!=="" ? +L.trainMin : avgMin;
+  let ck = min<30?3 : min<60?5 : min<120?6 : 8;
+  const pk = b.youth?1.5 : type==="lose"?2.0 : type==="gain"?1.8 : 1.6;
+  const P=pk*w; let C=ck*w; let F=(kcal-4*P-4*C)/9;
+  const fmin=0.7*w;
+  if(F<fmin){ C=Math.max(3*w,(kcal-4*P-9*fmin)/4); F=Math.max(fmin,(kcal-4*P-4*C)/9); }
+  kcal=4*P+4*C+9*F;
+  return { kcal:r0(kcal), p:r0(P), c:r0(C), f:r0(F), w, bmr:r0(bmr), tdee:r0(tdee), adj:r0(adj), min, ck:r1(C/w), pk, notes, warn, type, youth:b.youth };
+}
+
+/* 음식 DB: 처음 식단 탭을 열 때만 불러와요 */
+let FOODLIST=null;
+function loadFoods(cb){ if(window.FOODS){ FOODLIST=FOODLIST||window.FOODS; return cb(); }
+  const s=document.createElement("script"); s.src="foods.js"; s.onload=()=>{ FOODLIST=window.FOODS; cb(); }; s.onerror=()=>{ FOODLIST=[]; toast("음식 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요."); cb(); }; document.head.appendChild(s); }
+const norm=s=>String(s).replace(/[\s_·ㆍ()/]/g,"").toLowerCase();
+function searchFoods(q){
+  const mine=(S.myFoods||[]).map(f=>[...f,"mine"]);
+  const all=[...mine,...(FOODLIST||[])]; const n=norm(q);
+  if(!n){ const rec=(S.recent||[]).map(nm=>all.find(f=>f[0]===nm)).filter(Boolean); return rec.slice(0,15); }
+  const hit=[]; for(const f of all){ const k=norm(f[0]); const i=k.indexOf(n); if(i<0) continue; hit.push([f, (f[9]==="mine"?-2:0)+(f[1]?-1:0)+(i===0?0:2)+k.length/40]); }
+  return hit.sort((a,b)=>a[1]-b[1]).slice(0,40).map(x=>x[0]);
+}
+const shown=n=>String(n).replace(/_/g," · ");
+const dayMeals=(d=today())=>{ S.meals=S.meals||{}; return S.meals[d]=S.meals[d]||{아침:[],점심:[],저녁:[],간식:[]}; };
+function sum(items){ const t={k:0,c:0,p:0,f:0,na:0}; items.forEach(x=>{t.k+=x.k;t.c+=x.c;t.p+=x.p;t.f+=x.f;t.na+=x.na||0;}); return t; }
+function dayTotal(d=today()){ const m=(S.meals||{})[d]; return sum(m?MEALS.flatMap(k=>m[k]):[]); }
+
+/* 끼니 평가 · 다음 끼니 제안 · 저녁 후 하루 평가 (모두 규칙 기반) */
+function mealVerdict(meal, items, T){
+  if(!items.length) return null;
+  const t=sum(items), tk=T.kcal*SHARE[meal], tp=T.p*SHARE[meal], out=[];
+  const rk=t.k/tk;
+  out.push(rk<0.7?["↓",`열량 ${r0(t.k)}kcal, 이 끼니 목표(${r0(tk)})보다 적어요.`]: rk>1.3?["↑",`열량 ${r0(t.k)}kcal, 이 끼니 목표(${r0(tk)})보다 많아요.`]:["✓",`열량 ${r0(t.k)}kcal, 알맞아요.`]);
+  if(meal!=="간식"){ out.push(t.p<Math.min(tp*0.7,20)?["↓",`단백질 ${r0(t.p)}g. 한 끼에 20g 이상이 근육 회복에 좋아요.`]:["✓",`단백질 ${r0(t.p)}g.`]); }
+  return out;
+}
+function nextMealTip(d, T){
+  const m=dayMeals(d), eaten=dayTotal(d);
+  const order=["아침","점심","저녁"]; const left=order.filter(k=>!m[k].length && order.indexOf(k)>Math.max(-1,...order.map((k2,i)=>m[k2].length?i:-1)));
+  if(!left.length) return null;
+  const n=left.length, rk=(T.kcal-eaten.k)/n, rp=(T.p-eaten.p)/n, rc=(T.c-eaten.c)/n;
+  if(rk<=50) return {meal:left[0], text:"오늘 목표 열량을 이미 채웠어요. 다음 끼니는 채소·국 위주로 가볍게 드세요."};
+  const ideas=[];
+  if(rp>=25) ideas.push("닭가슴살 100g(단백질 28g)","달걀 2개(13g)","두부 반 모(15g 정도)");
+  else if(rp>=12) ideas.push("달걀 2개(단백질 13g)","우유 한 잔(6g)");
+  if(rc>=70) ideas.push("밥 한 공기(탄수화물 78g)"); else if(rc>=35) ideas.push("고구마 150g(탄수화물 59g)","바나나 1개(20g)");
+  return {meal:left[0], text:`${left[0]}은 약 ${r0(rk)}kcal · 단백질 ${r0(Math.max(0,rp))}g · 탄수화물 ${r0(Math.max(0,rc))}g 정도면 하루 목표에 맞아요.`, ideas};
+}
+function dayVerdict(d, T){
+  const t=dayTotal(d), w=T.w, out=[];
+  const rk=t.k/T.kcal;
+  out.push(rk<0.85?["↓",`열량 ${r0(t.k)} / ${T.kcal}kcal. ${r0(T.kcal-t.k)}kcal 모자라요.${T.type==="lose"?" 감량 중이어도 너무 적게 먹으면 근육이 빠져요.":" 회복이 늦어질 수 있어요."}`]
+          : rk>1.15?["↑",`열량 ${r0(t.k)} / ${T.kcal}kcal. ${r0(t.k-T.kcal)}kcal 많아요.`]:["✓",`열량 ${r0(t.k)} / ${T.kcal}kcal. 알맞아요.`]);
+  out.push(t.p<T.p*0.85?["↓",`단백질 ${r0(t.p)} / ${T.p}g (체중 1kg당 ${r1(t.p/w)}g). 내일 아침에 달걀이나 우유를 더해 보세요.`]:["✓",`단백질 ${r0(t.p)} / ${T.p}g (1kg당 ${r1(t.p/w)}g).`]);
+  out.push(t.c<T.c*0.8?["↓",`탄수화물 ${r0(t.c)} / ${T.c}g (1kg당 ${r1(t.c/w)}g). 오늘 훈련(${T.min}분)에 비해 적어서 내일 힘이 덜 날 수 있어요.`]:t.c>T.c*1.25?["↑",`탄수화물 ${r0(t.c)} / ${T.c}g. 훈련량에 비해 많은 편이에요.`]:["✓",`탄수화물 ${r0(t.c)} / ${T.c}g (1kg당 ${r1(t.c/w)}g).`]);
+  if(t.na>3000) out.push(["!",`나트륨 ${r0(t.na).toLocaleString()}mg. 국물·젓갈·장아찌가 많았는지 보세요. (땀을 많이 흘린 날은 괜찮아요)`]);
+  return out;
+}
+const vIcon=s=>({"✓":"g","↓":"y","↑":"y","!":"r"}[s]);
+function verdictList(v){ return `<ul class="vl">${v.map(([s,t])=>`<li><span class="vi ${vIcon(s)}">${s}</span>${t}</li>`).join("")}</ul>`; }
+
+function renderFood(){
+  if(!FOODLIST){ $("#app").innerHTML=`<div class="kick">NUTRITION</div><h1>식단</h1><p class="mut">음식 목록 불러오는 중…</p>`; return loadFoods(renderFood); }
+  const d=today(), T=plan(), m=dayMeals(d), t=dayTotal(d), g=goalOf();
+  const bar=(v,max,lab,unit)=>{ const pc=Math.min(100,v/max*100); return `<div class="mbar"><div class="mlab"><span>${lab}</span><span><b>${r0(v)}</b> / ${max}${unit}</span></div><div class="track"><i style="width:${pc}%;background:${v>max*1.15?"var(--y)":"var(--acc)"}"></i></div></div>`; };
+  const gname={maintain:"체중 유지",lose:"감량",gain:"증량"}[T.type];
+  let h=`<div class="kick">NUTRITION</div><h1>식단</h1>
+  <div class="card"><div class="row" style="align-items:center"><div><b>${gname}</b>${g.targetKg&&T.type!=="maintain"?` · 목표 ${g.targetKg}kg`:""}<div class="mut">하루 ${T.kcal.toLocaleString()}kcal · 오늘 훈련 ${T.min}분 기준</div></div><button class="chip" id="goalbtn" style="flex:none">목표 바꾸기</button></div>
+  ${T.warn.map(x=>`<div class="banner warn" style="margin:10px 0 0">${x}</div>`).join("")}
+  ${bar(t.k,T.kcal,"열량","kcal")}${bar(t.p,T.p,"단백질","g")}${bar(t.c,T.c,"탄수화물","g")}${bar(t.f,T.f,"지방","g")}
+  <small class="src"><a href="#" id="whyplan">이 숫자는 어떻게 나왔나요?</a></small></div>`;
+  for(const k of MEALS){
+    const items=m[k], v=mealVerdict(k,items,T), s=sum(items);
+    h+=`<div class="card"><div class="row" style="align-items:center"><b style="flex:1">${k}</b><span class="mut" style="flex:none">${items.length?r0(s.k)+"kcal":""}</span></div>
+    ${items.map((x,i)=>`<div class="fi" data-edit="${k}|${i}"><div style="flex:1"><div>${esc(shown(x.n))}</div><div class="mut">${x.g}${x.u||"g"} · ${r0(x.k)}kcal · 탄${r0(x.c)} 단${r0(x.p)} 지${r0(x.f)}</div></div><button class="x" data-del="${k}|${i}" aria-label="삭제">✕</button></div>`).join("")}
+    <button class="btn ghost sm" data-add="${k}">＋ ${k} 추가</button>
+    ${v?verdictList(v):""}</div>`;
+  }
+  const tip=nextMealTip(d,T);
+  if(tip) h+=`<div class="card"><b>다음 끼니(${tip.meal}) 제안</b><p style="margin:6px 0">${tip.text}</p>${tip.ideas&&tip.ideas.length?`<div class="mut">예: ${tip.ideas.join(" · ")}</div>`:""}</div>`;
+  if(m.저녁.length) h+=`<div class="card"><b>오늘 하루 평가</b>${verdictList(dayVerdict(d,T))}<small class="src">저녁을 기록하면 하루 전체를 평가해요. 참고용이에요.</small></div>`;
+  $("#app").innerHTML=h;
+  $("#goalbtn").onclick=goalSheet;
+  $("#whyplan").onclick=e=>{ e.preventDefault(); whyPlan(T); };
+  document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>foodSheet(b.dataset.add));
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const [k,i]=b.dataset.del.split("|"); m[k].splice(+i,1); save(); renderFood(); });
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.edit.split("|"); portionSheet(k,null,+i); });
+}
+let _sheetBusy=false;
+function sheet(html){ if(_sheetBusy) return; _sheetBusy=true; try{ $("#modal").innerHTML=`<div class="modal" id="mbg"><div class="card sheet">${html}</div></div>`; } finally{ _sheetBusy=false; } $("#mbg").onclick=e=>{ if(e.target.id==="mbg") closeSheet(); }; }
+function closeSheet(){ $("#modal").innerHTML=""; }
+function whyPlan(T){
+  sheet(`<h2 style="margin-top:0">하루 목표 계산</h2>
+  <p>기초대사량 ${T.bmr.toLocaleString()}kcal × 활동계수(주 ${esc(S.profile.weeklySessions)}회) = 유지 열량 ${T.tdee.toLocaleString()}kcal${T.adj?` → 목표 조정 ${T.adj>0?"+":""}${T.adj}kcal`:""}</p>
+  <p>단백질: 체중 ${r1(T.w)}kg × ${T.pk}g = ${T.p}g<br>탄수화물: 오늘 훈련 ${T.min}분 → 1kg당 ${T.ck}g = ${T.c}g<br>지방: 남은 열량 = ${T.f}g</p>
+  ${T.notes.map(x=>`<p class="mut">${x}</p>`).join("")}
+  <small class="src">기초대사량: Mifflin 등 (1990) Am J Clin Nutr 51(2)<br>탄수화물 1kg당 3~10g, 단백질 1.2~2.0g: Thomas 등 (2016) ACSM·영양사협회·캐나다영양사 공동 입장문, Med Sci Sports Exerc 48(3)<br>단백질 1.4~2.0g, 감량 중 더 높게: Jäger 등 (2017) ISSN 입장문, JISSN 14:20<br>감량 속도 주 0.5~1%: Helms 등 (2014) JISSN 11:20<br>최소 섭취량 1,500/1,200kcal: 일반 임상 기준(저열량 식단 하한)<br>음식 영양값: 식품의약품안전처 식품영양성분 통합DB</small>
+  <button class="btn ghost" id="cl">닫기</button>`); $("#cl").onclick=closeSheet;
+}
+function goalSheet(){
+  const g={...goalOf()}, youth=band(S.profile).youth;
+  const draw=()=>{
+    const T=plan(g);
+    sheet(`<h2 style="margin-top:0">목표</h2>
+    <div class="chips">${[["maintain","유지"],["lose","감량"],["gain","증량"]].map(([k,n])=>`<button class="chip ${g.type===k?"on":""}" data-gt="${k}" ${k==="lose"&&youth?"disabled":""}>${n}</button>`).join("")}</div>
+    ${youth?`<p class="mut">성장기에는 감량 목표를 세울 수 없어요.</p>`:""}
+    ${g.type!=="maintain"?`<div class="row"><div><label class="f">목표 체중 (kg)</label><input id="gk" type="number" inputmode="decimal" step="0.1" value="${g.targetKg||""}" placeholder="${r1(curWeight())}"></div>
+    <div><label class="f">언제까지 (선택)</label><input id="gd" type="date" value="${g.date||""}" min="${addDays(today(),7)}"></div></div>
+    <p class="mut">지금 ${r1(curWeight())}kg. 기한을 비워 두면 ${g.type==="lose"?"주 0.5%":"주 0.25%"} 속도로 계산해요.</p>`:""}
+    <div class="card" style="background:var(--chip);border:0;margin-top:12px"><b>하루 ${T.kcal.toLocaleString()}kcal</b><div class="mut">단백질 ${T.p}g · 탄수화물 ${T.c}g · 지방 ${T.f}g</div>${T.notes.map(x=>`<div class="mut">${x}</div>`).join("")}</div>
+    ${T.warn.map(x=>`<div class="banner warn">${x}</div>`).join("")}
+    <button class="btn" id="gsave">저장</button><button class="btn ghost" id="cl">취소</button>`);
+    document.querySelectorAll("[data-gt]").forEach(b=>b.onclick=()=>{ g.type=b.dataset.gt; draw(); });
+    const gk=$("#gk"), gd=$("#gd");
+    if(gk) gk.onchange=()=>{ g.targetKg=gk.value?+gk.value:null; draw(); };
+    if(gd) gd.onchange=()=>{ g.date=gd.value||null; draw(); };
+    $("#gsave").onclick=()=>{ S.goal=g.type==="maintain"?{type:"maintain"}:g; save(); closeSheet(); renderFood(); };
+    $("#cl").onclick=closeSheet;
+  };
+  draw();
+}
+function foodSheet(meal){
+  /* 입력칸은 한 번만 만들고, 글자를 칠 때는 결과 목록만 바꿔요.
+     (입력칸을 다시 그리면 한글 조합이 끊겨서 'ㅆㅏㄹ'처럼 풀어져요) */
+  let res=[];
+  sheet(`<h2 style="margin-top:0">${meal}에 추가</h2>
+    <input id="fq" type="search" placeholder="음식 이름 (예: 닭가슴살, 김치찌개)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    <div class="mut" id="fcount" style="margin:6px 0"></div>
+    <div class="fl" id="flist"></div>
+    <button class="btn ghost" id="custom">목록에 없어요 · 직접 입력</button><button class="btn ghost" id="cl">닫기</button>`);
+  const fq=$("#fq");
+  const list=()=>{
+    const q=fq.value; res=searchFoods(q);
+    $("#fcount").textContent = q ? `검색 결과 ${res.length}개${res.length===40?"+":""}` : (res.length?"최근 먹은 음식":"식약처 영양성분 DB 1,015개 + 내가 만든 음식");
+    $("#flist").innerHTML = res.map((f,i)=>`<button class="fr" data-pick="${i}"><span>${esc(shown(f[0]))}${f[9]==="mine"?' <em class="tag2">내 음식</em>':""}</span><span class="mut">${r0(f[2]*f[7]/100)}kcal / ${f[7]}${f[8]?"ml":"g"}</span></button>`).join("");
+    $("#flist").style.display = res.length ? "" : "none";
+  };
+  fq.addEventListener("input", ()=>{ clearTimeout(fq._t); fq._t=setTimeout(list,120); });
+  fq.addEventListener("compositionend", list);
+  $("#flist").onclick=e=>{ const b=e.target.closest("[data-pick]"); if(b) portionSheet(meal,res[+b.dataset.pick]); };
+  $("#custom").onclick=()=>customSheet(meal,fq.value); $("#cl").onclick=closeSheet;
+  list(); fq.focus();
+}
+function portionSheet(meal, f, editIdx){
+  const m=dayMeals(), old= editIdx!=null ? m[meal][editIdx] : null;
+  const base = old ? old.base : { n:f[0], k:f[2], c:f[3], p:f[4], f:f[5], na:f[6], sv:f[7], u:f[8]?"ml":"g" };
+  let g = old ? old.g : base.sv, over = old&&old.over ? {...old.over} : null;
+  const calc=()=> over || { k:base.k*g/100, c:base.c*g/100, p:base.p*g/100, f:base.f*g/100 };
+  const draw=()=>{ const v=calc();
+    sheet(`<h2 style="margin-top:0">${esc(shown(base.n))}</h2>
+    <label class="f">먹은 양 (${base.u})</label><input id="pg" type="number" inputmode="decimal" value="${g}">
+    <div class="chips" style="margin-top:8px">${[0.5,1,1.5,2].map(x=>`<button class="chip" data-sv="${x}">${x===1?"1인분":x+"인분"} (${r0(base.sv*x)}${base.u})</button>`).join("")}</div>
+    <label class="f">영양값 <span class="mut">(포장지 숫자와 다르면 고쳐 주세요)</span></label>
+    <div class="grid4">${[["k","열량 kcal"],["c","탄수화물 g"],["p","단백질 g"],["f","지방 g"]].map(([k,l])=>`<div><div class="mut">${l}</div><input type="number" inputmode="decimal" data-ov="${k}" value="${r1(v[k])}"></div>`).join("")}</div>
+    ${over?`<p class="mut">직접 고친 숫자를 쓰고 있어요. <a href="#" id="reset">DB 값으로 되돌리기</a></p>`:""}
+    <button class="btn" id="psave">${old?"고치기":"추가"}</button><button class="btn ghost" id="cl">취소</button>`);
+    $("#pg").onchange=e=>{ g=+e.target.value||0; over=null; draw(); };
+    document.querySelectorAll("[data-sv]").forEach(b=>b.onclick=()=>{ g=r0(base.sv*+b.dataset.sv); over=null; draw(); });
+    document.querySelectorAll("[data-ov]").forEach(i=>i.onchange=()=>{ over=over||{...calc()}; over[i.dataset.ov]=+i.value||0; draw(); });
+    const rs=$("#reset"); if(rs) rs.onclick=e=>{ e.preventDefault(); over=null; draw(); };
+    $("#psave").onclick=()=>{ const v=calc(); const item={n:base.n,g,u:base.u,k:v.k,c:v.c,p:v.p,f:v.f,na:base.na*g/100,base,over};
+      if(old) m[meal][editIdx]=item; else m[meal].push(item);
+      S.recent=[base.n,...(S.recent||[]).filter(x=>x!==base.n)].slice(0,20); save(); closeSheet(); renderFood(); };
+    $("#cl").onclick=closeSheet;
+  };
+  draw();
+}
+function customSheet(meal,q){
+  sheet(`<h2 style="margin-top:0">직접 입력</h2><p class="mut">포장지 영양성분표를 보고 1회 먹은 양 기준으로 적어 주세요. 다음부터 검색에 '내 음식'으로 나와요.</p>
+  <label class="f">이름</label><input id="cn" type="text" value="${esc(q||"")}" placeholder="예: 프로틴 쉐이크">
+  <div class="row"><div><label class="f">양</label><input id="cg" type="number" inputmode="decimal" value="100"></div><div><label class="f">단위</label><select id="cu"><option>g</option><option>ml</option></select></div></div>
+  <div class="grid4">${[["k","열량 kcal"],["c","탄수화물 g"],["p","단백질 g"],["f","지방 g"]].map(([k,l])=>`<div><div class="mut">${l}</div><input type="number" inputmode="decimal" id="c${k}"></div>`).join("")}</div>
+  <button class="btn" id="csave">저장하고 추가</button><button class="btn ghost" id="cl">취소</button>`);
+  $("#csave").onclick=()=>{ const nm=$("#cn").value.trim(), gg=+$("#cg").value||100, u=$("#cu").value;
+    const v=k=>+$("#c"+k).value||0; if(!nm||!v("k")){ toast("이름과 열량은 꼭 적어 주세요."); return; }
+    const per=x=>r1(x/gg*100); const f=[nm,0,per(v("k")),per(v("c")),per(v("p")),per(v("f")),0,gg,u==="ml"?1:0];
+    S.myFoods=[f,...(S.myFoods||[]).filter(x=>x[0]!==nm)]; save(); portionSheet(meal,f); };
+  $("#cl").onclick=closeSheet;
+}
+function dietCard(){
+  const t=dayTotal(), T=plan(), n=MEALS.filter(k=>((S.meals||{})[today()]||{})[k]?.length).length;
+  return `<div class="card" data-go="food" style="cursor:pointer"><div class="row" style="align-items:center"><b style="flex:1">오늘 식단</b><span class="mut" style="flex:none">${n?`${n}끼 기록`:"아직 기록 없음"} ›</span></div>
+  <div class="mut">${r0(t.k).toLocaleString()} / ${T.kcal.toLocaleString()}kcal · 단백질 ${r0(t.p)} / ${T.p}g</div></div>`;
+}
+
+render();
+</script>
+</body>
+</html>
