@@ -149,6 +149,19 @@ input:focus,select:focus,textarea:focus{border-bottom-color:var(--acc)!important
 .vseek{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:6px}
 .vseek button{border:0;background:var(--chip);color:#cfccc4;font:800 15px var(--cond);padding:11px 0;white-space:nowrap}
 .vbar input[type=range]{height:28px}
+.vtools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.vtools button{border:0;background:var(--chip);color:var(--ink);font:700 14px Pretendard,sans-serif;padding:11px 4px}
+.vtools button.on{background:var(--acc);color:var(--accInk)}
+/* 크게 보기: 영상이 화면을 꽉 채우고 조작 버튼만 아래에 남음 */
+body.vfs nav,body.vfs #back,body.vfs main>.kick,body.vfs main>h1,body.vfs main>.chips,body.vfs main>h2,body.vfs main>.card:not(.vctl),body.vfs main>p,body.vfs .vctl small.src,body.vfs main::before{display:none!important}
+body.vfs::before{display:none}
+body.vfs main{padding:0!important;max-width:none}
+body.vfs .vgrid{grid-template-rows:minmax(0,1fr);position:fixed;z-index:20;left:0;right:0;top:env(safe-area-inset-top);margin:0;gap:2px;background:#000;bottom:var(--vctlh,240px)}
+body.vfs .vslot{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
+body.vfs .vslot video,body.vfs .vgrid.two .vslot video{flex:1;height:auto;min-height:0}
+body.vfs .vctl{position:fixed;z-index:21;left:0;right:0;bottom:0;margin:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:2px solid var(--acc);max-height:50vh;overflow-y:auto}
+body.vfs .vctl .vrow{margin:6px 0}
+@media (orientation:landscape){ body.vfs .vctl{left:auto;width:min(340px,42vw);top:0;border-top:0;border-left:2px solid var(--acc);max-height:none} body.vfs .vgrid{right:min(340px,42vw);bottom:0} }
 </style>
 </head>
 <body>
@@ -177,7 +190,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.1";
+const APP_VER = "0.4.2";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -272,7 +285,7 @@ const LEVELS = { hobby:"취미 (대회 안 나감)", amateur:"아마추어 대�
 let tab = "today", ob = null;
 // 뒤로 가기: 바로 전 화면으로 (안드로이드 뒤로 버튼도 같이 동작)
 let NAV=[], obPrev=null;
-function go(t,back){ if(t!=="symptom") symSel=null;
+function go(t,back){ if(t!=="symptom") symSel=null; if(t!=="video"&&VID.full) setFull(false);
   if(!back && t!==tab){ NAV.push(tab); try{ history.pushState({cl:NAV.length},""); }catch(e){} }
   tab=t; render(); window.scrollTo(0,0); }
 function goBack(){
@@ -789,14 +802,21 @@ function renderHistory(){
 /* ───────── 준비 중 탭 ───────── */
 /* ───────── 4차: 영상 (느리게 · 한 프레임씩 · 두 영상 나란히) ─────────
    영상 파일은 저장하지 않음(사진 앱에 원본). 앱에는 메모와 표시한 시점만 저장. */
-const VID = { A:null, B:null, mode:"one", target:"A", rate:1, fps:30, linked:false, offset:0, marks:[], memo:"" };
+const VID = { A:null, B:null, mode:"one", target:"A", rate:1, fps:30, linked:false, offset:0, marks:[], memo:"", full:false, sound:false };
+function setFull(on){ VID.full=on; document.body.classList.toggle("vfs",on);
+  // 안드로이드 크롬은 주소창까지 숨김. 아이폰은 앱 안에서 화면을 꽉 채우는 방식만 됨
+  try{ if(on&&document.documentElement.requestFullscreen&&!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+       if(!on&&document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){} }
+function fitFull(){ const c=document.querySelector(".vctl"); if(VID.full&&c) document.documentElement.style.setProperty("--vctlh", (matchMedia("(orientation:landscape)").matches?0:c.offsetHeight)+"px"); }
+window.addEventListener("resize",()=>{ if(VID.full) fitFull(); });
+document.addEventListener("fullscreenchange",()=>{ if(!document.fullscreenElement&&VID.full&&tab==="video"){ VID.full=false; document.body.classList.remove("vfs"); } });
 const vEl = k => document.getElementById("vid"+k);
 const fmtT = t => (Math.round((t||0)*100)/100).toFixed(2)+"s";
 function renderVideo(){
   ["A","B"].forEach(k=>{ const el=vEl(k); if(el&&VID[k]) VID[k].t=el.currentTime; });   // 다시 그려도 보던 위치 유지
   const two=VID.mode==="two", keys=two?["A","B"]:["A"];
   if(!two) VID.target="A";
-  const slot=k=>VID[k]?`<div class="vslot"><video id="vid${k}" src="${VID[k].url}" playsinline muted preload="metadata" disableremoteplayback></video>
+  const slot=k=>VID[k]?`<div class="vslot"><video id="vid${k}" src="${VID[k].url}" playsinline ${VID.sound?"":"muted"} preload="metadata" disableremoteplayback></video>
       <div class="vbar"><span class="vk">${k}</span><input type="range" id="sc${k}" min="0" max="1000" step="1" value="0" aria-label="영상 ${k} 시간 막대"><span class="vt" id="vt${k}">0.00s</span></div>
       <label class="vchg">바꾸기<input type="file" accept="video/*" data-vf="${k}" hidden></label></div>`
     :`<label class="vpick"><input type="file" accept="video/*" data-vf="${k}" hidden><b>+</b>영상 ${k} 고르기<span class="mut">사진 앱에서 골라요</span></label>`;
@@ -807,6 +827,7 @@ function renderVideo(){
   ${keys.some(k=>VID[k])?`<div class="card vctl">
     ${two?`<div class="vrow"><span class="cap">움직일 영상</span><div class="chips">${["A","B","AB"].map(t=>`<button class="chip ${VID.target===t?"on":""}" data-vtg="${t}">${t==="AB"?"둘 다":t}</button>`).join("")}</div></div>`:""}
     <div class="vbtns"><button data-step="-1">◀ 1프레임</button><button id="vplay" class="pl">▶</button><button data-step="1">1프레임 ▶</button></div>
+    <div class="vtools"><button id="vfull">${VID.full?"✕ 작게 보기":"⛶ 크게 보기"}</button><button id="vsnd" class="${VID.sound?"on":""}">${VID.sound?"🔊 소리 켜짐":"🔇 소리 꺼짐"}</button></div>
     <div class="vseek">${[-10,-5,-1,1,5,10].map(n=>`<button data-seek="${n}">${n<0?"◀"+(-n)+"초":n+"초▶"}</button>`).join("")}</div>
     <small class="src">영상 아래 막대는 시간 막대예요. 손가락으로 끌면 그 시점으로 바로 이동해요.</small>
     <div class="vrow"><span class="cap">속도</span><div class="chips">${[0.25,0.5,1].map(r=>`<button class="chip ${VID.rate===r?"on":""}" data-rate="${r}">${r}×</button>`).join("")}</div></div>
@@ -823,7 +844,8 @@ function renderVideo(){
     <small class="src">영상 파일은 앱에 저장하지 않아요. 원본은 사진 앱에 그대로 있어요.</small></div>`:`<p class="mut" style="margin-top:14px">영상을 고르면 느리게 보기, 한 프레임씩 넘기기, 두 영상 나란히 비교를 할 수 있어요. 영상은 이 폰 밖으로 나가지 않아요.</p>`}
   ${notes.length?`<h2>지난 메모</h2>${notes.map((n,ri)=>{ const i=notes.length-1-ri; return `<div class="card"><div class="mlab"><b>${n.date.slice(5).replace("-","/")} · ${esc(n.names.join(" vs "))}</b><button class="x" data-ndel="${i}">✕</button></div>
     ${n.marks.length?`<ul class="why">${n.marks.map(m=>`<li class="lo">${m.k} · ${fmtT(m.t)} ${esc(m.txt)}</li>`).join("")}</ul>`:""}${n.memo?`<p style="margin:8px 0 0">${esc(n.memo)}</p>`:""}</div>`; }).join("")}`:""}`;
-  bindVideo();
+  document.body.classList.toggle("vfs",VID.full&&keys.some(k=>VID[k]));
+  bindVideo(); fitFull();
 }
 function vTargets(){ return (VID.target==="AB"?["A","B"]:[VID.target]).map(vEl).filter(Boolean); }
 function bindVideo(){
@@ -853,6 +875,9 @@ function bindVideo(){
     if(anyPlaying){ T.forEach(v=>v.pause()); play.textContent="▶"; }
     else { if(VID.linked&&T.length===2){ const [a,b]=T; b.currentTime=Math.max(0,a.currentTime+VID.offset); }
       T.forEach(v=>{ v.playbackRate=VID.rate; v.play().catch(()=>{}); }); play.textContent="❚❚"; } };
+  const fb=$("#vfull"); if(fb) fb.onclick=()=>{ setFull(!VID.full); fb.textContent=VID.full?"✕ 작게 보기":"⛶ 크게 보기"; window.scrollTo(0,0); fitFull(); };
+  const sb=$("#vsnd"); if(sb) sb.onclick=()=>{ VID.sound=!VID.sound; ["A","B"].map(vEl).filter(Boolean).forEach(v=>{ v.muted=!VID.sound; });
+    sb.classList.toggle("on",VID.sound); sb.textContent=VID.sound?"🔊 소리 켜짐":"🔇 소리 꺼짐"; };
   document.querySelectorAll("[data-seek]").forEach(b=>b.onclick=()=>{ const d=+b.dataset.seek;
     vTargets().forEach(v=>{ v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+d)); }); });
   document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{ const d=+b.dataset.step/VID.fps;
