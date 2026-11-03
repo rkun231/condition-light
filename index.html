@@ -202,6 +202,13 @@ main{overflow-x:clip}
 .vbtns{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr)}
 .vrow{flex-wrap:wrap;min-width:0}.vrow .chips{min-width:0}
 .fl.fixh{height:min(34vh,280px);max-height:none}
+.wipe-row{margin-top:14px;padding-top:4px;border-top:1px solid var(--line)}
+details.fold{border-bottom:1px solid var(--line)}
+details.fold summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;min-height:48px;font-weight:700}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:"＋";color:var(--gold);font-weight:800}
+details.fold[open] summary::after{content:"－"}
+details.fold>div{padding:0 0 14px;color:#dcd9d2}
 </style>
 </head>
 <body>
@@ -231,7 +238,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.6";
+const APP_VER = "0.4.7";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -967,25 +974,25 @@ function renderSettings(){
   $("#app").innerHTML=`<div class="kick">SETTINGS</div><h1>설정</h1>
   <div class="card"><b>${b.name}</b> · 만 ${ageOf(p)}세 · ${p.sex} · ${p.height}cm · ${p.weight}kg<div class="mut">${esc(p.cat)} · ${esc(p.subName||p.sub)}${p.pos?" · "+esc(p.pos):""}${p.weightClass?" · "+esc(p.weightClass)+(p.classLimit?` (${p.classLimit}kg)`:""):""} · ${LEVELS[p.level]}</div>
   <button class="btn ghost neutral" id="reprof">처음 설정 다시 하기 (기록은 그대로)</button></div>
-  <h2>백업</h2><div class="card"><p class="mut">기록은 이 휴대폰에만 있어요. 폰을 바꾸거나 사파리 데이터를 지우면 사라질 수 있으니 가끔 내보내 두세요.${S.lastBackup?` 마지막 백업: ${S.lastBackup}`:""}</p>
+  <h2>백업 · 데이터</h2><div class="card"><p class="mut">기록은 이 휴대폰에만 있어요. 폰을 바꾸거나 사파리 데이터를 지우면 사라질 수 있으니 가끔 내보내 두세요.${S.lastBackup?` 마지막 백업: ${S.lastBackup}`:""}</p>
   <button class="btn" id="exj">기록 내보내기 (복원용 파일)</button>
   <button class="btn ghost neutral" id="exc">엑셀용 파일(CSV) 내보내기</button>
-  <button class="btn ghost neutral" id="imp">기록 가져오기</button><input type="file" id="impf" accept=".json,application/json" hidden></div>
-  <h2>판단 기준</h2><div class="card" style="font-size:15px">
-  <p><b>컨디션 점수</b>: 잠·피로·근육통·스트레스를 1~5로 매겨 더한 값(20점 만점). 7일 이상 쌓이면 내 지난 28일 평균과 비교해요. 운동선수의 주관적 컨디션 설문 방식을 단순하게 옮겼어요.<small class="src">Hooper & Mackinnon (1995) Sports Medicine 20(5); McLean 등 (2010) 웰니스 설문</small></p>
-  <p><b>훈련량</b>: 훈련 시간(분) × 힘든 정도(1~10). '세션 RPE'라고 불리는 방법이에요.<small class="src">Foster 등 (2001) J Strength Cond Res 15(1)</small></p>
-  <p><b>훈련량 급증</b>: 최근 7일 합이 최근 4주 주평균의 몇 배인지 봐요. 21일 이상 기록이 있어야 계산해요. 이 비율은 부상 예측력에 논란이 있어서 <b>참고 지표</b>로만 써요.<small class="src">Gabbett (2016) Br J Sports Med 50; 비판: Impellizzeri 등 (2020) IJSPP 15(6)</small></p>
-  <p><b>잠</b>: 성인 7시간 이상, 청소년 8~10시간 권장 기준에서 1시간 넘게 모자라면 노랑.<small class="src">미국수면의학회(AASM) 권고</small></p>
-  <p><b>나이</b>: 35세 이상은 회복이 느려지는 점을 반영해 노랑 기준을 조금 더 일찍 잡아요.</p>
-  <p><b>포지션 설명</b>: 처음 설정에서 보여 주는 포지션별 경기 부담 차이는 참고용이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요.<small class="src">축구: Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2) · 농구: Stojanović 등 (2018) Sports Med 48(1) · 야구: MLB·USA Baseball 'Pitch Smart'</small></p>
-  <p><b>체급표</b>: 복싱 World Boxing(2025~)·프로 통상 체급, MMA 통합 규정, 주짓수 IBJJF(도복 포함), 레슬링 UWW, 태권도 WT, 유도 IJF, 삼보 FIAS, 가라데 WKF. 극진가라데는 단체마다 달라 WKO 예시예요. 대회 규정이 다르면 직접 고쳐 쓰세요.</p>
-  <p><b>증상 체크</b>: 고른 증상 중 가장 급한 단계(119 / 오늘 병원 / 쉬면서 관찰)로 안내하고, 119·병원 단계를 기록하면 그날 신호가 빨강이 돼요.<small class="src">${Object.values(SYM_SRC).join(" / ")}</small></p>
-  <p><b>투구 수</b>: 만 7~22세 투수는 나이별 하루 최대 투구 수와, 던진 개수에 따른 휴식일을 지켜요. 쉬는 날이면 신호가 노랑이에요. 만 23세 이상은 기록만 해요.<small class="src">MLB·USA Baseball 'Pitch Smart' 투구 지침</small></p>
-  <p><b>계체 후 회복</b>: 잃은 무게의 125~150%를 수분으로, 처음 600~900mL, 시간당 1~1.5L, 나트륨 50~90mmol/L. 2시간 뒤부터 탄수화물 시간당 약 1g/kg(최대 60g), 합계 4~7g/kg(감량 5% 이상이면 8~12g/kg).<small class="src">ISSN 2025 입장문; GSSI (Reale) 자료; Lewis James 발표</small></p>
-  <p class="mut">이 앱은 의학적 진단·치료를 하지 않아요. 몸에 이상이 있으면 의료진과 상담하세요.</p></div>
-  <h2>식단 목표 기준</h2><div class="card" style="font-size:15px"><p>하루 열량은 기초대사량(Mifflin-St Jeor 공식) × 주간 훈련 횟수 활동계수에서 시작해요. 단백질은 체중 1kg당 1.6g(감량 2.0g, 증량 1.8g, 청소년 1.5g), 탄수화물은 그날 훈련 시간에 따라 1kg당 3~8g이에요. 감량은 주 1%, 증량은 주 0.5%를 넘지 않게 막아요.<small class="src">Thomas 등 (2016) Med Sci Sports Exerc 48(3); Jäger 등 (2017) JISSN 14:20; Helms 등 (2014) JISSN 11:20; Mifflin 등 (1990) Am J Clin Nutr 51(2)</small></p><p>음식 영양값은 식품의약품안전처 식품영양성분 통합DB(공공데이터포털, 2026-09-29 기준)에서 가져왔어요.</p></div>
+  <button class="btn ghost neutral" id="imp">기록 가져오기</button><input type="file" id="impf" accept=".json,application/json" hidden>
+  <div class="wipe-row"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div></div>
   ${ageTips(p)?`<h2>나이대별 확인 (${band(p).id==="m50"?"50세 이상":"35~49세"})</h2><div class="card" style="font-size:15px"><ul class="why">${ageTips(p).map(([t,k])=>`<li class="lo"><span>${t}<small class="src">${AGE_SRC[k]}</small></span></li>`).join("")}</ul></div>`:""}
-  <h2>데이터</h2><div class="card"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div>
+  <h2>판단 기준과 출처</h2><div class="card fold-card" style="font-size:15px"><p class="mut" style="margin-top:0">누르면 펼쳐져요.</p>
+  <details class="fold"><summary>컨디션 점수</summary><div>잠·피로·근육통·스트레스를 1~5로 매겨 더한 값(20점 만점). 7일 이상 쌓이면 내 지난 28일 평균과 비교해요. 운동선수의 주관적 컨디션 설문 방식을 단순하게 옮겼어요.<small class="src">Hooper & Mackinnon (1995) Sports Medicine 20(5); McLean 등 (2010) 웰니스 설문</small></div></details>
+  <details class="fold"><summary>훈련량</summary><div>훈련 시간(분) × 힘든 정도(1~10). '세션 RPE'라고 불리는 방법이에요.<small class="src">Foster 등 (2001) J Strength Cond Res 15(1)</small></div></details>
+  <details class="fold"><summary>훈련량 급증</summary><div>최근 7일 합이 최근 4주 주평균의 몇 배인지 봐요. 21일 이상 기록이 있어야 계산해요. 이 비율은 부상 예측력에 논란이 있어서 <b>참고 지표</b>로만 써요.<small class="src">Gabbett (2016) Br J Sports Med 50; 비판: Impellizzeri 등 (2020) IJSPP 15(6)</small></div></details>
+  <details class="fold"><summary>잠</summary><div>성인 7시간 이상, 청소년 8~10시간 권장 기준에서 1시간 넘게 모자라면 노랑.<small class="src">미국수면의학회(AASM) 권고</small></div></details>
+  <details class="fold"><summary>나이</summary><div>35세 이상은 회복이 느려지는 점을 반영해 노랑 기준을 조금 더 일찍 잡아요.</div></details>
+  <details class="fold"><summary>포지션 설명</summary><div>처음 설정에서 보여 주는 포지션별 경기 부담 차이는 참고용이에요. 신호등 계산은 포지션과 상관없이 내 기록으로 해요.<small class="src">축구: Di Salvo 등 (2007) Int J Sports Med 28(3); Bradley 등 (2009) J Sports Sci 27(2) · 농구: Stojanović 등 (2018) Sports Med 48(1) · 야구: MLB·USA Baseball 'Pitch Smart'</small></div></details>
+  <details class="fold"><summary>체급표</summary><div>복싱 World Boxing(2025~)·프로 통상 체급, MMA 통합 규정, 주짓수 IBJJF(도복 포함), 레슬링 UWW, 태권도 WT, 유도 IJF, 삼보 FIAS, 가라데 WKF. 극진가라데는 단체마다 달라 WKO 예시예요. 대회 규정이 다르면 직접 고쳐 쓰세요.</div></details>
+  <details class="fold"><summary>증상 체크</summary><div>고른 증상 중 가장 급한 단계(119 / 오늘 병원 / 쉬면서 관찰)로 안내하고, 119·병원 단계를 기록하면 그날 신호가 빨강이 돼요.<small class="src">${Object.values(SYM_SRC).join(" / ")}</small></div></details>
+  <details class="fold"><summary>투구 수</summary><div>만 7~22세 투수는 나이별 하루 최대 투구 수와, 던진 개수에 따른 휴식일을 지켜요. 쉬는 날이면 신호가 노랑이에요. 만 23세 이상은 기록만 해요.<small class="src">MLB·USA Baseball 'Pitch Smart' 투구 지침</small></div></details>
+  <details class="fold"><summary>계체 후 회복</summary><div>잃은 무게의 125~150%를 수분으로, 처음 600~900mL, 시간당 1~1.5L, 나트륨 50~90mmol/L. 2시간 뒤부터 탄수화물 시간당 약 1g/kg(최대 60g), 합계 4~7g/kg(감량 5% 이상이면 8~12g/kg).<small class="src">ISSN 2025 입장문; GSSI (Reale) 자료; Lewis James 발표</small></div></details>
+  <details class="fold"><summary>식단 목표</summary><div><p>하루 열량은 기초대사량(Mifflin-St Jeor 공식) × 주간 훈련 횟수 활동계수에서 시작해요. 단백질은 체중 1kg당 1.6g(감량 2.0g, 증량 1.8g, 청소년 1.5g), 탄수화물은 그날 훈련 시간에 따라 1kg당 3~8g이에요. 감량은 주 1%, 증량은 주 0.5%를 넘지 않게 막아요.<small class="src">Thomas 등 (2016) Med Sci Sports Exerc 48(3); Jäger 등 (2017) JISSN 14:20; Helms 등 (2014) JISSN 11:20; Mifflin 등 (1990) Am J Clin Nutr 51(2)</small></p><p>음식 영양값은 식품의약품안전처 식품영양성분 통합DB(공공데이터포털, 2026-09-29 기준)에서 가져왔어요.</p></div></details>
+  <p class="mut">이 앱은 의학적 진단·치료를 하지 않아요. 몸에 이상이 있으면 의료진과 상담하세요.</p></div>
   <p class="mut" style="text-align:center">컨디션 신호등 v${APP_VER}</p>`;
   $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), classLimit:S.profile.classLimit??"", subName:S.profile.subName||"", screening:{...S.profile.screening}}}; obPrev=S.profile; S.profile=null; render(); };
   $("#exj").onclick=()=>{ download(`컨디션신호등_백업_${today()}.json`, JSON.stringify({app:"condition-note",version:1,exported:new Date().toISOString(),data:S},null,1), "application/json"); S.lastBackup=today(); save(); };
