@@ -162,11 +162,32 @@ body.vfs .vslot video,body.vfs .vgrid.two .vslot video{flex:1;height:auto;min-he
 body.vfs .vctl{position:fixed;z-index:21;left:0;right:0;bottom:0;margin:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:2px solid var(--acc);max-height:50vh;overflow-y:auto}
 body.vfs .vctl .vrow{margin:6px 0}
 @media (orientation:landscape){ body.vfs .vctl{left:auto;width:min(340px,42vw);top:0;border-top:0;border-left:2px solid var(--acc);max-height:none} body.vfs .vgrid{right:min(340px,42vw);bottom:0} }
+
+/* ── 루프 v2: 평가·검증 반영 ── */
+#toast{position:fixed;z-index:30;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:320px;width:max-content;background:var(--card2);color:var(--ink);border-left:4px solid var(--acc);padding:12px 16px;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,.5);pointer-events:none}
+#toast[hidden]{display:none}
+.btn.danger{background:#262626;color:var(--ink);box-shadow:inset 0 0 0 2px #4a4a4a}
+.btn.danger::before{content:"🗑";font-size:16px;transform:skewX(8deg)}.btn.danger::after{content:""}.btn.danger{justify-content:center;gap:10px}
+.btn.back-l{flex-direction:row-reverse;justify-content:flex-end;gap:10px}.btn.back-l::after{content:"‹"}
+.chip{min-height:44px}
+.x{width:44px;height:44px}
+.ends{font-size:13px;color:#8f8c84}
+nav button{color:#8a877f}
+.vchg{padding:8px 12px}
+.hmbox input::placeholder,.unitbox input::placeholder{color:#444!important}
+.pick2 .hmbox input{background:#151515!important;box-shadow:inset 0 0 0 1px #3a3a3a;min-width:64px;width:64px!important;padding:8px 8px!important}
+.symbar{position:fixed;z-index:6;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));display:flex;gap:6px;align-items:center;border:0;border-left:6px solid var(--c);background:var(--card2);color:var(--ink);font:600 15px Pretendard,sans-serif;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.6);text-align:left}
+.symbar b{color:var(--c)}.symbar span{margin-left:auto;color:var(--mut);font-size:13px}
+.vmore{display:none;width:100%;border:0;background:#202020;color:var(--mut);font:700 13px Pretendard,sans-serif;padding:10px;margin-top:6px}
+body.vfs .vmore{display:block}
+body.vfs:not(.vmore) .vopt{display:none!important}
+body.vfs .vctl{max-height:40vh}
 </style>
 </head>
 <body>
 <button id="back" hidden aria-label="뒤로">‹ <span>뒤로</span></button>
 <main id="app"></main>
+<div id="toast" hidden role="status"></div>
 <nav id="nav" hidden></nav>
 <div id="modal"></div>
 <script>
@@ -190,7 +211,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.2";
+const APP_VER = "0.4.3";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -286,8 +307,10 @@ let tab = "today", ob = null;
 // 뒤로 가기: 바로 전 화면으로 (안드로이드 뒤로 버튼도 같이 동작)
 let NAV=[], obPrev=null;
 function go(t,back){ if(t!=="symptom") symSel=null; if(t!=="video"&&VID.full) setFull(false);
-  if(!back && t!==tab){ NAV.push(tab); try{ history.pushState({cl:NAV.length},""); }catch(e){} }
+  if(tab==="edit"&&t!=="edit") draft=null;                       // 고치기 화면을 떠나면 저장 안 한 값은 버림
+  if(!back && t!==tab) NAV.push(tab);
   tab=t; render(); window.scrollTo(0,0); }
+const canBack=()=>!!$("#modal").innerHTML || (!S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0);
 function goBack(){
   if($("#modal").innerHTML){ $("#modal").innerHTML=""; _sheetBusy=false; return; }
   if(!S.profile&&ob){ if(ob.step>0){ ob.step--; renderOnboard(); window.scrollTo(0,0); }
@@ -295,9 +318,11 @@ function goBack(){
   if(tab==="edit") draft=null;
   if(NAV.length) go(NAV.pop(),true);
 }
-window.addEventListener("popstate",()=>goBack());
+// 폰의 뒤로 버튼: 앱 안에서 돌아갈 곳이 있으면 처리하고 보호 기록을 다시 깔아 둠. 없으면 다음 번에 앱을 나감
+try{ history.pushState({guard:1},""); }catch(e){}
+window.addEventListener("popstate",()=>{ if(canBack()){ goBack(); try{ history.pushState({guard:1},""); }catch(e){} } });
 function backBtn(){ const show = !S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0; $("#back").hidden=!show; }
-function uiBack(){ if(!S.profile||$("#modal").innerHTML) goBack(); else if(NAV.length){ try{ history.back(); }catch(e){ goBack(); } } }
+function uiBack(){ goBack(); }
 const $ = s => document.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function render(){
@@ -431,7 +456,7 @@ function renderOnboard(){
     <p class="mut">이 앱은 의학적 진단을 하지 않아요. 기록을 바탕으로 참고할 신호를 보여 줘요.</p>`;
     ok=true;
   }
-  $("#app").innerHTML=bar+h+`<button class="btn" id="next" ${ok?"":"disabled"}>${st<N-1?"다음":"시작하기"}</button>${st>0?`<button class="btn ghost" id="prev">이전</button>`:""}`;
+  $("#app").innerHTML=bar+h+`<button class="btn" id="next" ${ok?"":"disabled"}>${st<N-1?"다음":"시작하기"}</button>${st>0?`<button class="btn ghost back-l" id="prev">이전</button>`:""}`;
   bindOnboard(); backBtn();
 }
 function finalProfile(p){
@@ -509,7 +534,8 @@ function signal(date){
   if(pr) up(1,`오늘은 투구 쉬는 날이에요. ${md(pr.from)}에 ${pr.n}개를 던져서 ${pr.rest}일 휴식이 필요해요 (만 ${pr.R.age}세 기준). 던지기 말고 다른 훈련만 하세요.`);
   if(L.pitches&&isPitcher(p)){ const R=psRule(p); if(R&&L.pitches>R.max) up(1,`오늘 투구 수 ${L.pitches}개가 하루 최대 ${R.max}개(만 ${R.age}세)를 넘었어요.`); }
   if(!why.length) why.push([0,"평소와 비슷하거나 좋아요."]);
-  const msg=["평소대로 훈련해도 좋아요.","강도를 조금 낮추거나 회복(잠·식사·수분)에 신경 써 주세요.","오늘은 가볍게 하거나 쉬어 가세요. 심한 통증이 계속되면 진료를 받아 보세요."][lv];
+  const msg=["평소대로 훈련해도 좋아요.","강도를 조금 낮추거나 회복(잠·식사·수분)에 신경 써 주세요.",
+    "오늘은 가볍게 하거나 쉬어 가세요."+(L.pain===3?" 심한 통증이 계속되면 진료를 받아 보세요.":"")][lv];
   return { lv, color:["g","y","r"][lv], name:["초록","노랑","빨강"][lv], msg, why, baseline:past.length };
 }
 
@@ -542,7 +568,7 @@ function renderToday(){
     const s=signal(d);
     $("#app").innerHTML=top+`<h1>${dateTitle(d)}</h1>${weighCard(p,L)}
     <div class="card sig ${s.color}"><div class="light"><div class="lamp">${[2,1,0].map(i=>`<i class="${s.lv===i?"on":""}"></i>`).join("")}</div>
-    <div><div class="t">${SIG_UI[s.lv][0]} · ${s.name}</div><p class="big">${SIG_UI[s.lv][1]}</p></div></div>
+    <div><div class="t">${s.name} · ${SIG_UI[s.lv][0]}</div><p class="big">${SIG_UI[s.lv][1]}</p></div></div>
     <div class="msg">${s.msg}</div>
     <ul class="why">${s.why.map(([n,t])=>`<li class="${n?"hi":"lo"}">${t}</li>`).join("")}</ul>
     ${s.baseline<7?`<small class="src">평소 기준을 만드는 중이에요 (${s.baseline}/7일). 기록이 쌓이면 내 평소와 비교해요.</small>`:""}
@@ -562,7 +588,7 @@ function scaleHtml(k,v,lo,hi,label){ return `<label class="f">${label}</label><d
 const PARTS=["목","어깨","팔꿈치·손목","허리","엉덩이","무릎","발목·발","허벅지","종아리","기타"];
 function checkinForm(x){
   return `<div class="card">
-  <label class="f">잔 시간</label>${sleepPicker(x.sleepH)}
+  <label class="f">잠잔 시간</label>${sleepPicker(x.sleepH)}
   <label class="f">아침 몸무게 <span class="mut">(선택 · 최근 ${curWeight()}kg)</span></label>${picker("mw",x.weight,...wRange(curWeight()),1,"kg")}
   ${scaleHtml("sleepQ",x.sleepQ,"아주 나쁨","아주 좋음","잠은 어땠나요?")}
   ${scaleHtml("fatigue",x.fatigue,"아주 피곤","아주 상쾌","피로는?")}
@@ -571,24 +597,28 @@ function checkinForm(x){
   <label class="f">아픈 곳이 있나요?</label>
   <div class="chips">${["없음","약간","중간","심함"].map((v,i)=>`<button class="chip ${x.pain===i?"on":""}" data-pain="${i}">${v}</button>`).join("")}</div>
   ${x.pain>0?`<label class="f">어디가 아픈가요?</label><div class="chips">${PARTS.map(v=>`<button class="chip ${x.painPart===v?"on":""}" data-part="${v}">${v}</button>`).join("")}</div>`:""}
-  </div><button class="btn" id="saveck" ${x.sleepQ&&x.fatigue&&x.soreness&&x.stress&&hasSleep(x.sleepH)?"":"disabled"}>저장하고 신호 보기</button>`;
+  </div>${saveCkBtn(x)}`;
+}
+function ckMissing(x){ return [[hasSleep(x.sleepH),"잠잔 시간"],[x.sleepQ,"잠"],[x.fatigue,"피로"],[x.soreness,"근육통"],[x.stress,"스트레스"]].filter(a=>!a[0]).map(a=>a[1]); }
+function saveCkBtn(x){ const m=ckMissing(x); return `<button class="btn" id="saveck" ${m.length?"disabled":""}>${m.length?`${m.length}개 남았어요 · ${m.join(", ")}`:"저장하고 신호 보기"}</button>`; }
+function updSaveCk(){ const b=$("#saveck"); if(!b) return; const m=ckMissing(draft); b.disabled=!!m.length; b.textContent=m.length?`${m.length}개 남았어요 · ${m.join(", ")}`:"저장하고 신호 보기";
 }
 function bindCheckin(edit,L){
   const re=()=>{ edit?renderTodayEdit(L):renderToday(); };
   document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ draft[b.dataset.k]=+b.dataset.n; re(); });
   document.querySelectorAll("[data-pain]").forEach(b=>b.onclick=()=>{ draft.pain=+b.dataset.pain; if(!draft.pain) draft.painPart=""; re(); });
   document.querySelectorAll("[data-part]").forEach(b=>b.onclick=()=>{ draft.painPart=b.dataset.part; re(); });
-  bindSleep(v=>{ draft.sleepH=v; $("#saveck").disabled=!(draft.sleepQ&&draft.fatigue&&draft.soreness&&draft.stress&&hasSleep(draft.sleepH)); });
+  bindSleep(v=>{ draft.sleepH=v; updSaveCk(); });
   $("#mw").oninput=e=>{ draft.weight=e.target.value; };
   $("#saveck").onclick=()=>{
     const d=today(); const prev=S.logs[d]||{};
     S.logs[d]={...prev, sleepH:+draft.sleepH, sleepQ:draft.sleepQ, fatigue:draft.fatigue, soreness:draft.soreness, stress:draft.stress, pain:draft.pain, painPart:draft.painPart, weight:draft.weight?+draft.weight:null};
-    draft=null; save(); if(tab==="edit") uiBack(); else renderToday();
+    draft=null; save(); if(tab==="edit"){ tab="today"; goBack(); if(tab!=="today") go("today",true); } else renderToday();
   };
 }
 function trainForm(L){
   return `<div class="card"><p class="mut">훈련이 끝나면 적어 주세요. 쉬는 날이면 비워 두면 돼요.</p>
-  <label class="f">훈련 시간 (분)</label><input id="tm" type="number" inputmode="numeric" value="${L.trainMin||""}" placeholder="60">
+  <label class="f">훈련 시간 (분)</label><input id="tm" type="number" inputmode="numeric" value="${L.trainMin||""}" placeholder="예: 60">
   <label class="f">얼마나 힘들었나요? (1~10)</label>
   <div class="scale" style="grid-template-columns:repeat(5,1fr)">${Array.from({length:10},(_,i)=>`<button data-rpe="${i+1}" class="${L.rpe===i+1?"on":""}">${i+1}</button>`).join("")}</div>
   <div class="ends"><span>1 아주 쉬움</span><span>10 최대로 힘듦</span></div>
@@ -606,9 +636,10 @@ function pitchForm(L){
 }
 function bindTrain(L){
   const d=today();
-  document.querySelectorAll("[data-rpe]").forEach(b=>b.onclick=()=>{ S.logs[d].rpe=+b.dataset.rpe; save(); renderToday(); });
-  $("#tm").onchange=e=>{ S.logs[d].trainMin=e.target.value?+e.target.value:0; save(); renderToday(); };
-  const pc=$("#pc"); if(pc) pc.onchange=e=>{ S.logs[d].pitches=e.target.value?+e.target.value:0; save(); renderToday(); };
+  const done=()=>{ const L=S.logs[d]; save(); renderToday(); toast(L.trainMin&&L.rpe?`훈련 기록했어요 · 훈련량 ${tload(L)}`:"저장했어요"); };
+  document.querySelectorAll("[data-rpe]").forEach(b=>b.onclick=()=>{ S.logs[d].rpe=+b.dataset.rpe; done(); });
+  $("#tm").onchange=e=>{ S.logs[d].trainMin=e.target.value?+e.target.value:0; done(); };
+  const pc=$("#pc"); if(pc) pc.onchange=e=>{ S.logs[d].pitches=e.target.value?+e.target.value:0; save(); renderToday(); toast(`투구 수 ${S.logs[d].pitches}개 저장했어요`); };
 }
 
 /* ───────── 3차: 증상 체크 (목록형, 진단 아님) ───────── */
@@ -670,15 +701,17 @@ function renderSymptom(){
   const srcs=[...new Set(list.map(x=>x[4]).filter(Boolean))];
   $("#app").innerHTML=`<div class="kick">SYMPTOM CHECK</div><h1>증상 체크</h1>
   <p class="mut">지금 해당하는 걸 모두 눌러 주세요. 가장 급한 단계로 안내해요. <b>진단이 아니에요.</b> 판단이 어렵거나 불안하면 119에 전화해 상담하세요.</p>
-  ${R?`<div class="card sym" style="--c:${R.c}"><div class="t">${R.k==="119"?"EMERGENCY":R.k==="병원"?"SEE A DOCTOR":"WATCH"} · ${R.k}</div><p class="big">${R.head}</p><div class="msg">${R.body}</div>
+  ${R?`<div class="card sym" style="--c:${R.c}"><div class="t">${R.k} · ${R.k==="119"?"EMERGENCY":R.k==="병원"?"SEE A DOCTOR":"WATCH"}</div><p class="big">${R.head}</p><div class="msg">${R.body}</div>
     ${lv===2?`<a class="btn" href="tel:119" style="--acc:var(--r);--accInk:#fff;text-decoration:none">119 전화하기</a>`:""}</div>`:""}
   ${areas.map(a=>`<h2>${a}</h2><div class="card" style="padding:4px 12px">${list.filter(x=>x[0]===a).map(x=>`<button class="symr ${symSel.has(x[1])?"on":""}" data-sym="${x[1]}">
     <span class="sbox"></span><span style="flex:1">${x[3]}</span>${symSel.has(x[1])?`<em class="slv" style="--c:${SYM_LV[x[2]].c}">${SYM_LV[x[2]].k}</em>`:""}</button>`).join("")}</div>`).join("")}
   <button class="btn" id="symsave">오늘 기록에 남기기</button>
   ${symSel.size?`<button class="btn ghost" id="symclr">모두 지우기</button>`:""}
-  <small class="src">근거: ${srcs.map(k=>SYM_SRC[k]).join(" / ")}</small>`;
+  <small class="src">근거: ${srcs.map(k=>SYM_SRC[k]).join(" / ")}</small>
+  ${R?`<div style="height:64px"></div><button class="symbar" id="symbar" style="--c:${R.c}">지금 단계: <b>${R.k}</b> · ${symSel.size}개 선택 <span>↑ 안내 보기</span></button>`:""}`;
+  const sbar=$("#symbar"); if(sbar) sbar.onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
   document.querySelectorAll("[data-sym]").forEach(b=>b.onclick=()=>{ const id=b.dataset.sym; symSel.has(id)?symSel.delete(id):symSel.add(id); renderSymptom(); });
-  $("#symsave").onclick=()=>{ const d=today(); S.logs[d]=S.logs[d]||{}; S.logs[d].sym=[...symSel]; save(); symSel=null; toast(lv>=1?"기록했어요. 오늘 신호에 반영돼요.":"기록했어요."); if(NAV.length) uiBack(); else go("today"); };
+  $("#symsave").onclick=()=>{ const d=today(); S.logs[d]=S.logs[d]||{}; S.logs[d].sym=[...symSel]; save(); symSel=null; if(NAV.length) goBack(); else go("today"); toast(lv>=1?"기록했어요. 오늘 신호에 반영돼요.":"기록했어요."); };
   const c=$("#symclr"); if(c) c.onclick=()=>{ symSel.clear(); renderSymptom(); };
 }
 
@@ -720,8 +753,7 @@ function recoveryPlan(c){
   return {gap,lost,pct,fl,cph,big,carb,carbTot,warn,target:c.weighKg*1.10};
 }
 function renderRecovery(){
-  const p=S.profile; S.cut=S.cut||{weighKg:"",usualKg:"",weighAt:"",fightAt:"",checks:[]}; const c=S.cut;
-  if(!c.usualKg) c.usualKg=curWeight();
+  const p=S.profile; if(!S.cut){ S.cut={weighKg:"",usualKg:curWeight(),weighAt:"",fightAt:"",checks:[]}; } const c=S.cut;
   // 입력칸은 한 번만 그림 (고르는 중에 다시 그리면 휠이 닫히며 멋대로 선택됨). 결과만 아래에서 다시 그림
   $("#app").innerHTML=`<div class="kick">FIGHT CAMP · ${esc(p.subName||p.sub)}</div><h1>계체 후 회복 계산기</h1>
   <p class="mut">계체 뒤 경기 전까지 무엇을 얼마나 먹고 마실지 계산해요. 대회 규정과 팀 의료진의 안내가 먼저예요.</p>
@@ -740,7 +772,7 @@ function renderRecovery(){
   num("ru","usualKg"); num("rw","weighKg");
   // 날짜·시각은 값만 저장하고 화면은 그대로 둠
   ["rwa","rfa"].forEach((id,i)=>{ const el=$("#"+id); const f=()=>{ const key=i?"fightAt":"weighAt"; if(el.value===c[key]) return; c[key]=el.value; save(); drawRecovery(); }; el.onchange=f; el.onblur=f; });
-  $("#rclr").onclick=()=>ask("계체 후 회복 계산기 내용을 비울까요?","비우기",()=>{ S.cut=null; save(); renderRecovery(); });
+  $("#rclr").onclick=()=>ask("계체 후 회복 계산기 내용을 비울까요?","비우기",()=>{ S.cut={weighKg:"",usualKg:"",weighAt:"",fightAt:"",checks:[]}; save(); renderRecovery(); });
   drawRecovery();
 }
 function drawRecovery(){
@@ -830,8 +862,9 @@ function renderVideo(){
     <div class="vtools"><button id="vfull">${VID.full?"✕ 작게 보기":"⛶ 크게 보기"}</button><button id="vsnd" class="${VID.sound?"on":""}">${VID.sound?"🔊 소리 켜짐":"🔇 소리 꺼짐"}</button></div>
     <div class="vseek">${[-10,-5,-1,1,5,10].map(n=>`<button data-seek="${n}">${n<0?"◀"+(-n)+"초":n+"초▶"}</button>`).join("")}</div>
     <small class="src">영상 아래 막대는 시간 막대예요. 손가락으로 끌면 그 시점으로 바로 이동해요.</small>
-    <div class="vrow"><span class="cap">속도</span><div class="chips">${[0.25,0.5,1].map(r=>`<button class="chip ${VID.rate===r?"on":""}" data-rate="${r}">${r}×</button>`).join("")}</div></div>
-    <div class="vrow"><span class="cap">프레임</span><div class="chips">${[30,60,120,240].map(f=>`<button class="chip ${VID.fps===f?"on":""}" data-fps="${f}">${f}</button>`).join("")}</div></div>
+    <button class="vmore" id="vmore">${VID.more?"속도·프레임 접기 ▴":"속도·프레임 설정 ▾"}</button>
+    <div class="vrow vopt"><span class="cap">속도</span><div class="chips">${[0.25,0.5,1].map(r=>`<button class="chip ${VID.rate===r?"on":""}" data-rate="${r}">${r}×</button>`).join("")}</div></div>
+    <div class="vrow vopt"><span class="cap">프레임</span><div class="chips">${[30,60,120,240].map(f=>`<button class="chip ${VID.fps===f?"on":""}" data-fps="${f}">${f}</button>`).join("")}</div></div>
     <small class="src">프레임 칸은 찍은 영상의 초당 프레임이에요. 슬로모션은 120이나 240을 고르세요.</small>
     ${two?`<button class="btn ghost sm" id="vsync">${VID.linked?`맞춤 풀기 (B가 A보다 ${VID.offset>=0?"+":""}${VID.offset.toFixed(2)}초)`:"지금 위치로 두 영상 맞추기"}</button>
       <small class="src">두 영상을 같은 순간(예: 발이 땅에 닿는 순간)에 멈춰 두고 누르면, 그다음부터 '둘 다'로 같이 움직여요.</small>`:""}
@@ -875,6 +908,8 @@ function bindVideo(){
     if(anyPlaying){ T.forEach(v=>v.pause()); play.textContent="▶"; }
     else { if(VID.linked&&T.length===2){ const [a,b]=T; b.currentTime=Math.max(0,a.currentTime+VID.offset); }
       T.forEach(v=>{ v.playbackRate=VID.rate; v.play().catch(()=>{}); }); play.textContent="❚❚"; } };
+  const vm=$("#vmore"); if(vm) vm.onclick=()=>{ VID.more=!VID.more; document.body.classList.toggle("vmore",VID.more); vm.textContent=VID.more?"속도·프레임 접기 ▴":"속도·프레임 설정 ▾"; fitFull(); };
+  document.body.classList.toggle("vmore",!!VID.more);
   const fb=$("#vfull"); if(fb) fb.onclick=()=>{ setFull(!VID.full); fb.textContent=VID.full?"✕ 작게 보기":"⛶ 크게 보기"; window.scrollTo(0,0); fitFull(); };
   const sb=$("#vsnd"); if(sb) sb.onclick=()=>{ VID.sound=!VID.sound; ["A","B"].map(vEl).filter(Boolean).forEach(v=>{ v.muted=!VID.sound; });
     sb.classList.toggle("on",VID.sound); sb.textContent=VID.sound?"🔊 소리 켜짐":"🔇 소리 꺼짐"; };
@@ -943,7 +978,7 @@ function ask(text, okLabel, fn){
   $("#modal").innerHTML=`<div class="modal"><div class="card"><p>${esc(text)}</p><button class="btn danger" id="mok">${okLabel}</button><button class="btn ghost" id="mno">취소</button></div></div>`;
   $("#mok").onclick=()=>{ $("#modal").innerHTML=""; fn(); }; $("#mno").onclick=()=>$("#modal").innerHTML="";
 }
-function toast(t){ $("#modal").innerHTML=`<div class="modal" style="align-items:center;background:transparent;pointer-events:none"><div class="card" style="border-radius:14px;max-width:320px;text-align:center">${esc(t)}</div></div>`; setTimeout(()=>$("#modal").innerHTML="",1800); }
+function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>{ el.hidden=true; },1900); }
 
 /* ───────── 2차: 식단 + 목표 ─────────
    하루 목표 = 기초대사량(Mifflin-St Jeor) × 활동계수 ± 목표 조정
@@ -1116,6 +1151,7 @@ function foodSheet(meal){
     <button class="btn ghost" id="custom">목록에 없어요 · 직접 입력</button><button class="btn ghost" id="cl">닫기</button>`);
   const fq=$("#fq");
   const list=()=>{
+    if(!$("#fcount")) return;                                   // 시트가 이미 닫혔으면 아무것도 안 함
     const q=fq.value; res=searchFoods(q);
     $("#fcount").textContent = q ? `검색 결과 ${res.length}개${res.length===40?"+":""}` : (res.length?"최근 먹은 음식":"식약처 영양성분 DB 1,015개 + 내가 만든 음식");
     $("#flist").innerHTML = res.map((f,i)=>`<button class="fr" data-pick="${i}"><span>${esc(shown(f[0]))}${f[9]==="mine"?' <em class="tag2">내 음식</em>':""}</span><span class="mut">${r0(f[2]*f[7]/100)}kcal / ${f[7]}${f[8]?"ml":"g"}</span></button>`).join("");
