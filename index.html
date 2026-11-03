@@ -146,7 +146,7 @@ input[type=number],input[type=text],.hmbox input{font-style:normal!important}
 body[class^="sg-"] main::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(4px + env(safe-area-inset-top));background:var(--acc);z-index:7}
 body[class^="sg-"] nav{border-top:3px solid var(--acc)}
 input:focus,select:focus,textarea:focus{border-bottom-color:var(--acc)!important}
-.vseek{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:6px}
+.vseek{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:6px}
 .vseek button{border:0;background:var(--chip);color:#cfccc4;font:800 15px var(--cond);padding:11px 0;white-space:nowrap}
 .vbar input[type=range]{height:28px}
 .vtools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
@@ -193,6 +193,15 @@ body.vfs.hasback::after{display:none}
 small.src a,.src a{padding:14px 4px;margin:-14px -4px}
 #toast{bottom:calc(96px + env(safe-area-inset-bottom))}
 small.src{font-size:13px}
+html,body{overflow-x:hidden;max-width:100%;overscroll-behavior-x:none}
+/* 버튼을 빨리 두 번 누르면 화면이 확대돼 옆으로 쏠리던 것 막기 */
+button,a,input,select,label,.vslot,.vctl{touch-action:manipulation}
+main{overflow-x:clip}
+.vctl,.vgrid,.vslot,.vbar{max-width:100%;min-width:0}
+.vseek button{min-width:0;overflow:hidden;font-size:14px;letter-spacing:-.02em}
+.vbtns{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr)}
+.vrow{flex-wrap:wrap;min-width:0}.vrow .chips{min-width:0}
+.fl.fixh{height:min(34vh,280px);max-height:none}
 </style>
 </head>
 <body>
@@ -222,7 +231,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.5";
+const APP_VER = "0.4.6";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -362,16 +371,16 @@ function pickOpts(v,lo,hi,step,unit,cus){
     o.map(x=>`<option value="${x}" ${!custom&&x===+v?"selected":""}>${x}${unit}</option>`).join("");
 }
 // 고르기 바로 밑 '직접 입력'을 고르면 아래에 입력칸이 열림
-function picker(id,v,lo,hi,step,unit,ph){
-  const custom = v!==""&&v!=null&&!inRange(v,lo,hi,step);
+function picker(id,v,lo,hi,step,unit,ph,open){
+  const custom = open || (v!==""&&v!=null&&!inRange(v,lo,hi,step));
   return `<div class="pick2"><select id="${id}_s" data-pick="${id}" data-lo="${lo}" data-hi="${hi}" data-st="${step}" data-u="${unit}">${pickOpts(v,lo,hi,step,unit)}</select>
-  <div class="unitbox ${custom?"":"hid"}" id="${id}_box"><input id="${id}" type="text" inputmode="decimal" value="${esc(v??"")}" placeholder="${ph||"예: 70.4"}"><span>${unit}</span></div></div>`;
+  <div class="unitbox ${custom?"":"hid"}" id="${id}_box" ${open?'data-open="1"':""}><input id="${id}" type="text" inputmode="decimal" value="${esc(v??"")}" placeholder="${ph||"예: 70.4"}"><span>${unit}</span></div></div>`;
 }
 const wRange = w => { const c=Math.round(+w||70); return [Math.max(25,c-12), Math.min(200,c+12)]; };
 document.addEventListener("change",e=>{ const s=e.target; if(!s.matches||!s.matches("select[data-pick]")) return;
   const inp=document.getElementById(s.dataset.pick), box=document.getElementById(s.dataset.pick+"_box"); if(!inp) return;
   if(s.value==="__c"){ box.classList.remove("hid"); inp.focus(); return; }
-  box.classList.add("hid"); inp.value=s.value;
+  if(!box.dataset.open) box.classList.add("hid"); inp.value=s.value;
   inp.dispatchEvent(new Event("input",{bubbles:true})); inp.dispatchEvent(new Event("change",{bubbles:true})); });
 document.addEventListener("input",e=>{ const inp=e.target; if(!e.isTrusted||inp.tagName!=="INPUT"||!inp.id) return; const s=document.getElementById(inp.id+"_s"); if(!s||!s.dataset.pick) return;
   inp.value=inp.value.replace(/[^\d.]/g,"");
@@ -782,7 +791,7 @@ function renderRecovery(){
   $("#app").innerHTML=`<div class="kick">FIGHT CAMP · ${esc(p.subName||p.sub)}</div><h1>계체 후 회복 계산기</h1>
   <p class="mut">계체 뒤 경기 전까지 무엇을 얼마나 먹고 마실지 계산해요. 대회 규정과 팀 의료진의 안내가 먼저예요.</p>
   <div class="card"><label class="f">평소 체중</label>${picker("ru",c.usualKg,...wRange(c.usualKg||curWeight()),1,"kg")}
-  <label class="f">계체 체중</label>${picker("rw",c.weighKg,...wRange(p.classLimit||c.usualKg||curWeight()),1,"kg",p.classLimit?`예: ${p.classLimit}`:"")}
+  <label class="f">계체 체중 <span class="mut">(공식 계체 숫자 그대로, 소수점까지)</span></label>${picker("rw",c.weighKg,...wRange(p.classLimit||c.usualKg||curWeight()),1,"kg",p.classLimit?`예: ${p.classLimit}`:"예: 70.3",true)}
   <label class="f">계체 시각</label><input id="rwa" type="datetime-local" value="${esc(c.weighAt)}">
   <label class="f">경기 시각</label><input id="rfa" type="datetime-local" value="${esc(c.fightAt)}"></div>
   <div id="rres"></div>
@@ -1170,9 +1179,9 @@ function foodSheet(meal){
      (입력칸을 다시 그리면 한글 조합이 끊겨서 'ㅆㅏㄹ'처럼 풀어져요) */
   let res=[];
   sheet(`<h2 style="margin-top:0">${meal}에 추가</h2>
-    <input id="fq" type="search" placeholder="음식 이름 (예: 닭가슴살, 김치찌개)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
     <div class="mut" id="fcount" style="margin:6px 0"></div>
-    <div class="fl" id="flist"></div>
+    <div class="fl fixh" id="flist"></div>
+    <input id="fq" type="search" placeholder="음식 이름 (예: 닭가슴살, 김치찌개)" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" style="margin-top:8px">
     <button class="btn ghost" id="custom">목록에 없어요 · 직접 입력</button><button class="btn ghost neutral" id="cl">닫기</button>`);
   const fq=$("#fq");
   const list=()=>{
@@ -1180,7 +1189,7 @@ function foodSheet(meal){
     const q=fq.value; res=searchFoods(q);
     $("#fcount").textContent = q ? `검색 결과 ${res.length}개${res.length===40?"+":""}` : (res.length?"최근 먹은 음식":"식약처 영양성분 DB 1,015개 + 내가 만든 음식");
     $("#flist").innerHTML = res.map((f,i)=>`<button class="fr" data-pick="${i}"><span>${esc(shown(f[0]))}${f[9]==="mine"?' <em class="tag2">내 음식</em>':""}</span><span class="mut">${r0(f[2]*f[7]/100)}kcal / ${f[7]}${f[8]?"ml":"g"}</span></button>`).join("");
-    $("#flist").style.display = res.length ? "" : "none";
+    if(!res.length) $("#flist").innerHTML=`<div class="mut" style="padding:14px">${q?"찾는 음식이 없어요. 아래 '직접 입력'으로 추가해 주세요.":""}</div>`;
   };
   fq.addEventListener("input", ()=>{ clearTimeout(fq._t); fq._t=setTimeout(list,120); });
   fq.addEventListener("compositionend", list);
