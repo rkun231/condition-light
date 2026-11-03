@@ -20,7 +20,7 @@
 body.sg-g{--acc:var(--g)}body.sg-y{--acc:var(--y)}body.sg-r{--acc:var(--r);--accInk:#fff}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
-body::before{content:"";position:fixed;right:-120px;top:30px;width:300px;height:560px;background:repeating-linear-gradient(135deg,var(--gold) 0 2px,transparent 2px 22px);opacity:.12;transform:skewX(-12deg);pointer-events:none;z-index:0}
+body::before{content:"";position:fixed;right:-120px;top:30px;width:300px;height:560px;background:repeating-linear-gradient(135deg,var(--gold) 0 2px,transparent 2px 22px);opacity:.12;transform:skewX(-12deg) translateZ(0);will-change:transform;pointer-events:none;z-index:0}
 main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom))}
 a{color:var(--gold)}
 h1{font:400 28px/1.15 var(--disp);margin:4px 0 14px;letter-spacing:-.01em}
@@ -126,9 +126,33 @@ input[type=datetime-local]{width:100%;font:inherit;padding:12px;border:0;border-
 .vbtns button.pl{background:var(--acc);color:var(--accInk);font-size:20px}
 textarea{width:100%;font:inherit;padding:12px;border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink);resize:vertical}
 input.mk{width:100%;margin-top:4px;padding:6px 8px!important;font-size:14px!important;border-bottom-width:1px!important}
+
+/* 뒤로 가기 */
+#back{position:fixed;z-index:8;left:10px;top:calc(8px + env(safe-area-inset-top));display:flex;align-items:center;gap:4px;border:0;background:rgba(14,14,14,.88);color:var(--ink);font:800 26px/1 var(--cond);padding:6px 12px 8px 8px;cursor:pointer;}
+#back span{font:700 14px Pretendard,sans-serif}
+#back[hidden]{display:none}
+main{padding-top:calc(54px + env(safe-area-inset-top))!important}
+/* 고르기 + 직접 입력 */
+.pick2 select{width:100%;font:italic 800 22px var(--cond);border:0;border-bottom:2px solid var(--gold);border-radius:0;background:var(--card2);color:var(--ink);padding:10px 36px 10px 12px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c9a96e' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.unitbox,.pick2 .hmbox{display:flex;align-items:center;gap:6px;margin-top:8px;background:var(--card2);border-bottom:2px solid var(--acc);padding:0 12px}
+.unitbox input{flex:1;min-width:0;border:0!important;background:none!important;padding:10px 0!important;font:800 24px var(--cond)!important;color:var(--ink)}
+.unitbox span{font:800 18px var(--cond);color:var(--gold);flex:none}
+.hid{display:none!important}
+/* 커서가 마지막 숫자를 가리지 않게: 입력칸 글자는 기울이지 않음 */
+input[type=number],input[type=text],.hmbox input{font-style:normal!important}
+.pick2 .hmbox{justify-content:flex-start}.hmbox input{flex:none!important;width:2.4em!important;text-align:right;padding-right:3px!important}.hmbox span{margin-right:10px}
+/* 오늘 신호 색: 누를 수 있는 것과 고른 것에 모두 적용 */
+.btn.ghost{box-shadow:inset 0 0 0 2px var(--acc);color:var(--acc)}
+body[class^="sg-"] main::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(4px + env(safe-area-inset-top));background:var(--acc);z-index:7}
+body[class^="sg-"] nav{border-top:3px solid var(--acc)}
+input:focus,select:focus,textarea:focus{border-bottom-color:var(--acc)!important}
+.vseek{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:6px}
+.vseek button{border:0;background:var(--chip);color:#cfccc4;font:800 15px var(--cond);padding:11px 0;white-space:nowrap}
+.vbar input[type=range]{height:28px}
 </style>
 </head>
 <body>
+<button id="back" hidden aria-label="뒤로">‹ <span>뒤로</span></button>
 <main id="app"></main>
 <nav id="nav" hidden></nav>
 <div id="modal"></div>
@@ -153,7 +177,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.0";
+const APP_VER = "0.4.1";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -246,62 +270,88 @@ const LEVELS = { hobby:"취미 (대회 안 나감)", amateur:"아마추어 대�
 
 /* ───────── 화면 전환 ───────── */
 let tab = "today", ob = null;
-function go(t){ if(t!=="symptom") symSel=null; tab=t; render(); window.scrollTo(0,0); }
+// 뒤로 가기: 바로 전 화면으로 (안드로이드 뒤로 버튼도 같이 동작)
+let NAV=[], obPrev=null;
+function go(t,back){ if(t!=="symptom") symSel=null;
+  if(!back && t!==tab){ NAV.push(tab); try{ history.pushState({cl:NAV.length},""); }catch(e){} }
+  tab=t; render(); window.scrollTo(0,0); }
+function goBack(){
+  if($("#modal").innerHTML){ $("#modal").innerHTML=""; _sheetBusy=false; return; }
+  if(!S.profile&&ob){ if(ob.step>0){ ob.step--; renderOnboard(); window.scrollTo(0,0); }
+    else if(obPrev){ S.profile=obPrev; obPrev=null; ob=null; render(); } return; }
+  if(tab==="edit") draft=null;
+  if(NAV.length) go(NAV.pop(),true);
+}
+window.addEventListener("popstate",()=>goBack());
+function backBtn(){ const show = !S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0; $("#back").hidden=!show; }
+function uiBack(){ if(!S.profile||$("#modal").innerHTML) goBack(); else if(NAV.length){ try{ history.back(); }catch(e){ goBack(); } } }
 const $ = s => document.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function render(){
-  if(!S.profile){ $("#nav").hidden=true; document.body.className=""; return renderOnboard(); }
+  if(!S.profile){ $("#nav").hidden=true; document.body.className=""; renderOnboard(); return; }
   $("#nav").hidden=false; renderNav();
   paintSig();
-  ({today:renderToday, history:renderHistory, food:renderFood, video:renderVideo, settings:renderSettings, symptom:renderSymptom, recovery:renderRecovery})[tab]();
+  ({today:renderToday, history:renderHistory, food:renderFood, video:renderVideo, settings:renderSettings, symptom:renderSymptom, recovery:renderRecovery,
+    edit:()=>{ if(!draft){ const L=S.logs[today()]; if(!L||!L.sleepQ){ tab="today"; return renderToday(); } draft={...L}; } renderTodayEdit(S.logs[today()]); }})[tab]();
+  backBtn();
 }
 function renderNav(){
   const T=[["today","●","오늘"],["history","▤","기록"],["food","🍚","식단"],["video","▶","영상"],["settings","⚙","설정"]];
-  $("#nav").innerHTML=T.map(([k,i,n])=>`<button class="${(["symptom","recovery"].includes(tab)?"today":tab)===k?"on":""}" data-go="${k}"><b></b>${n}</button>`).join("");
+  $("#nav").innerHTML=T.map(([k,i,n])=>`<button class="${(["symptom","recovery","edit"].includes(tab)?"today":tab)===k?"on":""}" data-go="${k}"><b></b>${n}</button>`).join("");
 }
-document.addEventListener("click", e=>{ const b=e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
+document.addEventListener("click", e=>{ const b=e.target.closest("[data-go]"); if(b){ e.preventDefault(); go(b.dataset.go); } });
 
 
 /* ───────── 고르기 + 직접 입력 (잠 0.5시간, 몸무게 1kg 단위) ───────── */
-function pickOpts(v,lo,hi,step,unit){
+const inRange=(v,lo,hi,step)=>{ if(v===""||v==null||isNaN(+v)) return false; const k=(+v-lo)/step; return +v>=lo&&+v<=hi&&Math.abs(k-Math.round(k))<1e-6; };
+function pickOpts(v,lo,hi,step,unit,cus){
   const o=[]; for(let x=lo;x<=hi+1e-9;x=Math.round((x+step)*10)/10) o.push(x);
-  const has=v!==""&&v!=null&&o.some(x=>x===+v);
-  return `<option value="">고르기</option>${v!==""&&v!=null&&!has?`<option value="${esc(v)}" selected>직접 ${esc(v)}${unit}</option>`:""}`+
-    o.map(x=>`<option value="${x}" ${has&&x===+v?"selected":""}>${x}${unit}</option>`).join("");
+  const custom = cus || (v!==""&&v!=null&&!inRange(v,lo,hi,step));
+  return `<option value="">고르기</option><option value="__c" ${custom?"selected":""}>직접 입력${custom&&v!==""&&v!=null?` · ${esc(v)}${unit}`:""}</option>`+
+    o.map(x=>`<option value="${x}" ${!custom&&x===+v?"selected":""}>${x}${unit}</option>`).join("");
 }
+// 고르기 바로 밑 '직접 입력'을 고르면 아래에 입력칸이 열림
 function picker(id,v,lo,hi,step,unit,ph){
-  return `<div class="pick"><select id="${id}_s" data-pick="${id}" data-lo="${lo}" data-hi="${hi}" data-st="${step}" data-u="${unit}">${pickOpts(v,lo,hi,step,unit)}</select>
-  <input id="${id}" type="number" inputmode="decimal" step="0.1" value="${esc(v??"")}" placeholder="${ph||"직접 입력"}"></div>`;
+  const custom = v!==""&&v!=null&&!inRange(v,lo,hi,step);
+  return `<div class="pick2"><select id="${id}_s" data-pick="${id}" data-lo="${lo}" data-hi="${hi}" data-st="${step}" data-u="${unit}">${pickOpts(v,lo,hi,step,unit)}</select>
+  <div class="unitbox ${custom?"":"hid"}" id="${id}_box"><input id="${id}" type="text" inputmode="decimal" value="${esc(v??"")}" placeholder="${ph||"예: 70.4"}"><span>${unit}</span></div></div>`;
 }
 const wRange = w => { const c=Math.round(+w||70); return [Math.max(25,c-12), Math.min(200,c+12)]; };
 document.addEventListener("change",e=>{ const s=e.target; if(!s.matches||!s.matches("select[data-pick]")) return;
-  const inp=document.getElementById(s.dataset.pick); if(!inp) return; inp.value=s.value;
+  const inp=document.getElementById(s.dataset.pick), box=document.getElementById(s.dataset.pick+"_box"); if(!inp) return;
+  if(s.value==="__c"){ box.classList.remove("hid"); inp.focus(); return; }
+  box.classList.add("hid"); inp.value=s.value;
   inp.dispatchEvent(new Event("input",{bubbles:true})); inp.dispatchEvent(new Event("change",{bubbles:true})); });
-document.addEventListener("input",e=>{ const inp=e.target; if(inp.tagName!=="INPUT"||!inp.id) return; const s=document.getElementById(inp.id+"_s"); if(!s||!s.dataset.pick) return;
-  s.innerHTML=pickOpts(inp.value,+s.dataset.lo,+s.dataset.hi,+s.dataset.st,s.dataset.u); });
+document.addEventListener("input",e=>{ const inp=e.target; if(!e.isTrusted||inp.tagName!=="INPUT"||!inp.id) return; const s=document.getElementById(inp.id+"_s"); if(!s||!s.dataset.pick) return;
+  inp.value=inp.value.replace(/[^\d.]/g,"");
+  s.innerHTML=pickOpts(inp.value,+s.dataset.lo,+s.dataset.hi,+s.dataset.st,s.dataset.u,true); });
 
 /* ───────── 잠 시간: 0.5시간 단위 고르기 + 직접 입력 (1H 24M) ───────── */
 const hasSleep = v => v!=="" && v!=null && !isNaN(+v);
 function hm(v){ const t=Math.round(+v*60); return [Math.floor(t/60), t%60]; }
 function fmtSleep(v){ const [h,m]=hm(v); return `${h}H ${String(m).padStart(2,"0")}M`; }
-function sleepOpts(v){ const o=[]; for(let x=0;x<=14;x+=0.5) o.push(x);
-  const has=hasSleep(v)&&o.some(x=>Math.abs(x-v)<1e-6);
-  return `<option value="">고르기</option>${hasSleep(v)&&!has?`<option value="${v}" selected>직접 ${fmtSleep(v)}</option>`:""}`+
-    o.map(x=>`<option value="${x}" ${has&&Math.abs(x-v)<1e-6?"selected":""}>${fmtSleep(x)}</option>`).join(""); }
+function sleepOpts(v,cus){ const o=[]; for(let x=0;x<=14;x+=0.5) o.push(x);
+  const custom = cus || (hasSleep(v)&&!o.some(x=>Math.abs(x-v)<1e-6));
+  return `<option value="">고르기</option><option value="__c" ${custom?"selected":""}>직접 입력${custom&&hasSleep(v)?` · ${fmtSleep(v)}`:""}</option>`+
+    o.map(x=>`<option value="${x}" ${!custom&&hasSleep(v)&&Math.abs(x-v)<1e-6?"selected":""}>${fmtSleep(x)}</option>`).join(""); }
 function sleepPicker(v){ const [h,m]=hasSleep(v)?hm(v):["",""];
-  return `<div class="pick"><select id="sh_s">${sleepOpts(v)}</select>
-  <div class="hmbox"><input id="sh_h" type="text" inputmode="numeric" maxlength="2" value="${h}" placeholder="0"><span>H</span>
+  const custom = hasSleep(v) && Math.abs(v*2-Math.round(v*2))>1e-6;
+  return `<div class="pick2"><select id="sh_s">${sleepOpts(v)}</select>
+  <div class="hmbox ${custom?"":"hid"}" id="sh_box"><input id="sh_h" type="text" inputmode="numeric" maxlength="2" value="${h}" placeholder="0"><span>H</span>
   <input id="sh_m" type="text" inputmode="numeric" maxlength="2" value="${hasSleep(v)?String(m).padStart(2,"0"):""}" placeholder="00"><span>M</span></div></div>`; }
 function bindSleep(onv){
-  const S_=$("#sh_s"), H=$("#sh_h"), M=$("#sh_m");
+  const S_=$("#sh_s"), H=$("#sh_h"), M=$("#sh_m"), box=$("#sh_box");
   const fromFields=()=>{ const h=H.value.replace(/\D/g,""), m=M.value.replace(/\D/g,"");
-    if(h===""&&m===""){ onv(""); S_.innerHTML=sleepOpts(""); return; }
-    const mm=Math.min(59,+m||0), v=Math.round(((+h||0)+mm/60)*100)/100; onv(v); S_.innerHTML=sleepOpts(v); };
+    if(h===""&&m===""){ onv(""); S_.innerHTML=sleepOpts("",true); return; }
+    const mm=Math.min(59,+m||0), v=Math.round(((+h||0)+mm/60)*100)/100; onv(v); S_.innerHTML=sleepOpts(v,true); };
   H.oninput=()=>{ H.value=H.value.replace(/\D/g,"").slice(0,2); fromFields();
     // 2자리거나 2 이상이면 분(M) 칸으로 넘어감 (1은 10~14시간일 수 있어 기다림)
     if(H.value.length===2 || +H.value>=2 || H.value==="0") { M.focus(); M.select(); } };
   M.oninput=()=>{ M.value=M.value.replace(/\D/g,"").slice(0,2); if(+M.value>59) M.value="59"; fromFields(); };
-  S_.onchange=()=>{ const v=S_.value; if(v===""){ H.value=""; M.value=""; onv(""); return; } const [h,m]=hm(v); H.value=h; M.value=String(m).padStart(2,"0"); onv(+v); };
+  S_.onchange=()=>{ const v=S_.value;
+    if(v==="__c"){ box.classList.remove("hid"); H.focus(); return; }
+    box.classList.add("hid");
+    if(v===""){ H.value=""; M.value=""; onv(""); return; } const [h,m]=hm(v); H.value=h; M.value=String(m).padStart(2,"0"); onv(+v); };
 }
 /* ───────── 처음 설정 ───────── */
 function renderOnboard(){
@@ -348,7 +398,7 @@ function renderOnboard(){
       ${wl?`${sets.length===1?`<div class="mut">${esc(sets[0].org)}</div>`:""}<div class="chips" style="margin-top:8px">${wl.map(([n,k],i)=>`<button class="chip ${p.weightClass===n&&String(p.classLimit)===String(k??"")?"on":""}" data-wc="${i}">${esc(n)}${k!=null&&!/kg/.test(n)?` · ${k}kg`:""}</button>`).join("")}</div>`:""}
       ${!sets?`<div class="mut">${p.sub==="기타 투기"?"위 예시 중 삼보·가라데·극진가라데는 체급표가 나와요. ":""}체급표가 없는 종목은 아래에 직접 써 주세요.</div>`:""}
       <div class="row"><div><label class="f">체급 이름</label><input id="wc" type="text" value="${esc(p.weightClass)}" placeholder="예: 라이트급"></div>
-      <div><label class="f">한계 kg</label><input id="wl" type="number" inputmode="decimal" step="0.1" value="${esc(p.classLimit)}" placeholder="무제한이면 비워 두기"></div></div>
+      <div><label class="f">한계 kg</label><input id="wl" type="number" inputmode="decimal" step="0.1" value="${esc(p.classLimit)}" placeholder="비우면 무제한"></div></div>
       <div class="mut" style="margin-top:6px">목록에 없거나 대회 규정이 다르면 직접 고쳐 주세요.${b4youth(p)?" 표는 성인 기준이에요.":""}</div>`:""}`;
     const pl=posList(p.cat,p.sub);
     ok=p.cat&&p.sub&&(!pl||pl.includes(p.pos));
@@ -369,7 +419,7 @@ function renderOnboard(){
     ok=true;
   }
   $("#app").innerHTML=bar+h+`<button class="btn" id="next" ${ok?"":"disabled"}>${st<N-1?"다음":"시작하기"}</button>${st>0?`<button class="btn ghost" id="prev">이전</button>`:""}`;
-  bindOnboard();
+  bindOnboard(); backBtn();
 }
 function finalProfile(p){
   const prof={...p, birthYear:+p.birthYear, birthMonth:+p.birthMonth, height:+p.height, weight:+p.weight, classLimit:p.classLimit?+p.classLimit:null};
@@ -397,7 +447,7 @@ function bindOnboard(){
     p.weightClass=x[0]; p.classLimit=x[1]==null?"":String(x[1]); });
   on("[data-scr]",b=>p.screening[b.dataset.scr]=b.dataset.v);
   inp("ht","height"); inp("wt","weight"); inp("wc","weightClass"); inp("wl","classLimit"); inp("subname","subName");
-  $("#next").onclick=()=>{ if(ob.step<5){ob.step++;re();window.scrollTo(0,0);} else { S.profile=finalProfile(p); ob=null; save(); go("today"); } };
+  $("#next").onclick=()=>{ if(ob.step<5){ob.step++;re();window.scrollTo(0,0);} else { S.profile=finalProfile(p); ob=null; obPrev=null; save(); go("today"); } };
   const pv=$("#prev"); if(pv) pv.onclick=()=>{ob.step--;re();};
   function okStep(){ return ob.step!==1 || (+p.height>80&&+p.height<250&&+p.weight>20&&+p.weight<250&&p.weeklySessions); }
 }
@@ -491,7 +541,7 @@ function renderToday(){
     <h2>식단</h2>${dietCard()}
     <button class="btn ghost" id="editck">아침 체크인 고치기</button>`;
     bindTrain(L);
-    $("#editck").onclick=()=>{ draft={...L}; delete S.logs[d].sleepQ; renderTodayEdit(L); };
+    $("#editck").onclick=()=>{ draft={...L}; go("edit"); };
   }
 }
 function renderTodayEdit(L){ paintSig(); $("#app").innerHTML=`<div class="kick">MORNING CHECK-IN</div><h1>체크인 고치기</h1>${checkinForm(draft,true)}`; bindCheckin(true,L); }
@@ -520,7 +570,7 @@ function bindCheckin(edit,L){
   $("#saveck").onclick=()=>{
     const d=today(); const prev=S.logs[d]||{};
     S.logs[d]={...prev, sleepH:+draft.sleepH, sleepQ:draft.sleepQ, fatigue:draft.fatigue, soreness:draft.soreness, stress:draft.stress, pain:draft.pain, painPart:draft.painPart, weight:draft.weight?+draft.weight:null};
-    draft=null; save(); renderToday();
+    draft=null; save(); if(tab==="edit") uiBack(); else renderToday();
   };
 }
 function trainForm(L){
@@ -615,7 +665,7 @@ function renderSymptom(){
   ${symSel.size?`<button class="btn ghost" id="symclr">모두 지우기</button>`:""}
   <small class="src">근거: ${srcs.map(k=>SYM_SRC[k]).join(" / ")}</small>`;
   document.querySelectorAll("[data-sym]").forEach(b=>b.onclick=()=>{ const id=b.dataset.sym; symSel.has(id)?symSel.delete(id):symSel.add(id); renderSymptom(); });
-  $("#symsave").onclick=()=>{ const d=today(); S.logs[d]=S.logs[d]||{}; S.logs[d].sym=[...symSel]; save(); symSel=null; toast(lv>=1?"기록했어요. 오늘 신호에 반영돼요.":"기록했어요."); go("today"); };
+  $("#symsave").onclick=()=>{ const d=today(); S.logs[d]=S.logs[d]||{}; S.logs[d].sym=[...symSel]; save(); symSel=null; toast(lv>=1?"기록했어요. 오늘 신호에 반영돼요.":"기록했어요."); if(NAV.length) uiBack(); else go("today"); };
   const c=$("#symclr"); if(c) c.onclick=()=>{ symSel.clear(); renderSymptom(); };
 }
 
@@ -659,18 +709,34 @@ function recoveryPlan(c){
 function renderRecovery(){
   const p=S.profile; S.cut=S.cut||{weighKg:"",usualKg:"",weighAt:"",fightAt:"",checks:[]}; const c=S.cut;
   if(!c.usualKg) c.usualKg=curWeight();
-  const ready=c.weighKg>0&&c.usualKg>0&&c.weighAt&&c.fightAt&&hoursBetween(c.weighAt,c.fightAt)>0;
-  const P=ready?recoveryPlan(c):null;
-  const last=c.checks.length?c.checks[c.checks.length-1]:null;
-  const gain=last?last[1]-c.weighKg:0, goal=c.weighKg*0.10, prog=last?Math.max(0,Math.min(100,gain/goal*100)):0;
+  // 입력칸은 한 번만 그림 (고르는 중에 다시 그리면 휠이 닫히며 멋대로 선택됨). 결과만 아래에서 다시 그림
   $("#app").innerHTML=`<div class="kick">FIGHT CAMP · ${esc(p.subName||p.sub)}</div><h1>계체 후 회복 계산기</h1>
   <p class="mut">계체 뒤 경기 전까지 무엇을 얼마나 먹고 마실지 계산해요. 대회 규정과 팀 의료진의 안내가 먼저예요.</p>
   <div class="card"><label class="f">평소 체중</label>${picker("ru",c.usualKg,...wRange(c.usualKg||curWeight()),1,"kg")}
   <label class="f">계체 체중</label>${picker("rw",c.weighKg,...wRange(p.classLimit||c.usualKg||curWeight()),1,"kg",p.classLimit?`예: ${p.classLimit}`:"")}
   <label class="f">계체 시각</label><input id="rwa" type="datetime-local" value="${esc(c.weighAt)}">
   <label class="f">경기 시각</label><input id="rfa" type="datetime-local" value="${esc(c.fightAt)}"></div>
-  ${!ready?`<p class="mut">네 칸을 모두 채우면 계획이 나와요.</p>`:`
-  <div class="stats"><div><b>${r1(P.lost)}<small>kg</small></b><span class="cap">감량 (${P.pct.toFixed(1)}%)</span></div>
+  <div id="rres"></div>
+  <h2>참고: 급속 감량 범위</h2><div class="card" style="font-size:15px">
+  <ul class="why"><li class="lo">계체 72시간 전부터 6.7% · 48시간 5.7% · 24시간 4.4% 이내</li>
+  <li class="lo">땀 빼기는 24시간 안 체중의 2~4%, 감독이 있을 때만</li>
+  <li class="lo">계체가 경기 전날이면 최대 8%, 당일이면 5% 미만</li></ul>
+  <small class="src">ISSN 2025 입장문 (계체 감량·회복); GSSI (Reale) 자료; Lewis James 발표. 진단·처방이 아니에요.</small></div>
+  <button class="btn danger" id="rclr">계산기 비우기</button>`;
+  const num=(id,k)=>{ const el=$("#"+id); const f=()=>{ const v=parseFloat(el.value), nv=v>0?v:""; if(nv===c[k]) return; c[k]=nv; save(); drawRecovery(); }; el.oninput=f; el.onchange=f; };
+  num("ru","usualKg"); num("rw","weighKg");
+  // 날짜·시각은 값만 저장하고 화면은 그대로 둠
+  ["rwa","rfa"].forEach((id,i)=>{ const el=$("#"+id); const f=()=>{ const key=i?"fightAt":"weighAt"; if(el.value===c[key]) return; c[key]=el.value; save(); drawRecovery(); }; el.onchange=f; el.onblur=f; });
+  $("#rclr").onclick=()=>ask("계체 후 회복 계산기 내용을 비울까요?","비우기",()=>{ S.cut=null; save(); renderRecovery(); });
+  drawRecovery();
+}
+function drawRecovery(){
+  const c=S.cut, box=$("#rres"); if(!box) return;
+  const ready=c.weighKg>0&&c.usualKg>0&&c.weighAt&&c.fightAt&&hoursBetween(c.weighAt,c.fightAt)>0;
+  if(!ready){ box.innerHTML=`<p class="mut">${c.weighAt&&c.fightAt&&hoursBetween(c.weighAt,c.fightAt)<=0?"경기 시각이 계체 시각보다 뒤여야 해요.":"네 칸을 모두 채우면 계획이 나와요."}</p>`; return; }
+  const P=recoveryPlan(c), last=c.checks.length?c.checks[c.checks.length-1]:null;
+  const gain=last?last[1]-c.weighKg:0, goal=c.weighKg*0.10, prog=last?Math.max(0,Math.min(100,gain/goal*100)):0;
+  box.innerHTML=`<div class="stats"><div><b>${r1(P.lost)}<small>kg</small></b><span class="cap">감량 (${P.pct.toFixed(1)}%)</span></div>
   <div><b>${r1(P.gap)}<small>h</small></b><span class="cap">경기까지</span></div>
   <div><b>${r1(P.target)}<small>kg</small></b><span class="cap">회복 목표</span></div></div>
   ${P.warn.map(w=>`<div class="banner bad">${w}</div>`).join("")}
@@ -686,18 +752,8 @@ function renderRecovery(){
   ${last?`<div class="mlab"><span>지금 ${last[1]}kg · +${r1(gain)}kg</span><span>${Math.round(prog)}%</span></div><div class="track"><i style="width:${prog}%;background:var(--acc)"></i></div>
    <ul class="why">${c.checks.map(([t,kg])=>`<li class="lo">계체 뒤 ${r1(hoursBetween(c.weighAt,t))}시간 · ${kg}kg (+${r1(kg-c.weighKg)})</li>`).join("")}</ul>`:""}
   <label class="f">지금 몸무게</label>${picker("rnow","",...wRange(last?last[1]:c.weighKg),1,"kg")}
-  <button class="btn sm" id="radd">기록</button></div>`}
-  <h2>참고: 급속 감량 범위</h2><div class="card" style="font-size:15px">
-  <ul class="why"><li class="lo">계체 72시간 전부터 6.7% · 48시간 5.7% · 24시간 4.4% 이내</li>
-  <li class="lo">땀 빼기는 24시간 안 체중의 2~4%, 감독이 있을 때만</li>
-  <li class="lo">계체가 경기 전날이면 최대 8%, 당일이면 5% 미만</li></ul>
-  <small class="src">ISSN 2025 입장문 (계체 감량·회복); GSSI (Reale) 자료; Lewis James 발표. 진단·처방이 아니에요.</small></div>
-  ${c.weighAt||c.weighKg?`<button class="btn danger" id="rclr">계산기 비우기</button>`:""}`;
-  const num=(id,k)=>{ const el=$("#"+id); el.onchange=()=>{ c[k]=el.value?+el.value:""; save(); renderRecovery(); }; };
-  num("ru","usualKg"); num("rw","weighKg");
-  ["rwa","rfa"].forEach((id,i)=>{ const el=$("#"+id); el.onchange=()=>{ c[i?"fightAt":"weighAt"]=el.value; save(); renderRecovery(); }; });
-  const add=$("#radd"); if(add) add.onclick=()=>{ const v=+$("#rnow").value; if(!(v>20&&v<250)){ toast("몸무게를 확인해 주세요."); return; } c.checks.push([nowLocal(),v]); save(); renderRecovery(); };
-  const clr=$("#rclr"); if(clr) clr.onclick=()=>ask("계체 후 회복 계산기 내용을 비울까요?","비우기",()=>{ S.cut=null; save(); renderRecovery(); });
+  <button class="btn sm" id="radd">기록</button></div>`;
+  $("#radd").onclick=()=>{ const v=parseFloat($("#rnow").value); if(!(v>20&&v<250)){ toast("몸무게를 확인해 주세요."); return; } c.checks.push([nowLocal(),v]); save(); drawRecovery(); };
 }
 
 /* ───────── 3차: 나이대별 확인 (35세 이상, 하루 한 줄) ───────── */
@@ -740,8 +796,8 @@ function renderVideo(){
   ["A","B"].forEach(k=>{ const el=vEl(k); if(el&&VID[k]) VID[k].t=el.currentTime; });   // 다시 그려도 보던 위치 유지
   const two=VID.mode==="two", keys=two?["A","B"]:["A"];
   if(!two) VID.target="A";
-  const slot=k=>VID[k]?`<div class="vslot"><video id="vid${k}" src="${VID[k].url}" playsinline muted preload="auto"></video>
-      <div class="vbar"><span class="vk">${k}</span><input type="range" id="sc${k}" min="0" max="1000" value="0"><span class="vt" id="vt${k}">0.00s</span></div>
+  const slot=k=>VID[k]?`<div class="vslot"><video id="vid${k}" src="${VID[k].url}" playsinline muted preload="metadata" disableremoteplayback></video>
+      <div class="vbar"><span class="vk">${k}</span><input type="range" id="sc${k}" min="0" max="1000" step="1" value="0" aria-label="영상 ${k} 시간 막대"><span class="vt" id="vt${k}">0.00s</span></div>
       <label class="vchg">바꾸기<input type="file" accept="video/*" data-vf="${k}" hidden></label></div>`
     :`<label class="vpick"><input type="file" accept="video/*" data-vf="${k}" hidden><b>+</b>영상 ${k} 고르기<span class="mut">사진 앱에서 골라요</span></label>`;
   const notes=(S.vnotes||[]).slice().reverse();
@@ -751,6 +807,8 @@ function renderVideo(){
   ${keys.some(k=>VID[k])?`<div class="card vctl">
     ${two?`<div class="vrow"><span class="cap">움직일 영상</span><div class="chips">${["A","B","AB"].map(t=>`<button class="chip ${VID.target===t?"on":""}" data-vtg="${t}">${t==="AB"?"둘 다":t}</button>`).join("")}</div></div>`:""}
     <div class="vbtns"><button data-step="-1">◀ 1프레임</button><button id="vplay" class="pl">▶</button><button data-step="1">1프레임 ▶</button></div>
+    <div class="vseek">${[-10,-5,-1,1,5,10].map(n=>`<button data-seek="${n}">${n<0?"◀"+(-n)+"초":n+"초▶"}</button>`).join("")}</div>
+    <small class="src">영상 아래 막대는 시간 막대예요. 손가락으로 끌면 그 시점으로 바로 이동해요.</small>
     <div class="vrow"><span class="cap">속도</span><div class="chips">${[0.25,0.5,1].map(r=>`<button class="chip ${VID.rate===r?"on":""}" data-rate="${r}">${r}×</button>`).join("")}</div></div>
     <div class="vrow"><span class="cap">프레임</span><div class="chips">${[30,60,120,240].map(f=>`<button class="chip ${VID.fps===f?"on":""}" data-fps="${f}">${f}</button>`).join("")}</div></div>
     <small class="src">프레임 칸은 찍은 영상의 초당 프레임이에요. 슬로모션은 120이나 240을 고르세요.</small>
@@ -777,17 +835,26 @@ function bindVideo(){
   document.querySelectorAll("[data-fps]").forEach(b=>b.onclick=()=>{ VID.fps=+b.dataset.fps; document.querySelectorAll("[data-fps]").forEach(x=>x.classList.toggle("on",+x.dataset.fps===VID.fps)); });
   ["A","B"].forEach(k=>{ const v=vEl(k); if(!v) return; const sc=$("#sc"+k), vt=$("#vt"+k);
     v.playbackRate=VID.rate;
-    v.addEventListener("loadedmetadata",()=>{ v.currentTime=VID[k].t||0.001; });
-    const upd=()=>{ if(v.duration){ sc.value=Math.round(v.currentTime/v.duration*1000); } vt.textContent=fmtT(v.currentTime); };
-    v.addEventListener("timeupdate",upd); v.addEventListener("seeked",upd);
+    v.addEventListener("loadedmetadata",()=>{ v.currentTime=VID[k].t||0.001; },{once:true});
+    let dragging=false;
+    const upd=()=>{ if(!dragging&&isFinite(v.duration)&&v.duration){ sc.value=Math.round(v.currentTime/v.duration*1000); } vt.textContent=fmtT(v.currentTime); };
+    v.addEventListener("timeupdate",upd); v.addEventListener("seeked",upd); v.addEventListener("durationchange",upd);
+    try{ v.load(); }catch(e){}
+    sc.addEventListener("pointerdown",()=>dragging=true); sc.addEventListener("touchstart",()=>dragging=true,{passive:true});
+    ["pointerup","touchend","change"].forEach(ev=>sc.addEventListener(ev,()=>{ dragging=false; }));
     v.addEventListener("pause",()=>{ const p=$("#vplay"); if(p&&!["A","B"].map(vEl).some(x=>x&&!x.paused)) p.textContent="▶"; });
-    sc.oninput=()=>{ if(!v.duration) return; v.pause(); v.currentTime=sc.value/1000*v.duration;
+    sc.oninput=()=>{ const seek=()=>{ v.pause(); v.currentTime=sc.value/1000*v.duration; vt.textContent=fmtT(v.currentTime); };
+      // 아이폰은 한 번도 재생하지 않은 영상의 길이를 모를 수 있어서, 잠깐 재생했다 멈춘 뒤 이동
+      if(!isFinite(v.duration)||!v.duration||v.readyState<1){ v.play().then(()=>{ seek(); }).catch(()=>{}); return; }
+      seek();
       if(VID.linked&&VID.target==="AB"){ const o=vEl(k==="A"?"B":"A"); if(o) o.currentTime=Math.max(0,v.currentTime+(k==="A"?VID.offset:-VID.offset)); } };
   });
   const play=$("#vplay"); if(play) play.onclick=()=>{ const T=vTargets(); const anyPlaying=T.some(v=>!v.paused);
     if(anyPlaying){ T.forEach(v=>v.pause()); play.textContent="▶"; }
     else { if(VID.linked&&T.length===2){ const [a,b]=T; b.currentTime=Math.max(0,a.currentTime+VID.offset); }
       T.forEach(v=>{ v.playbackRate=VID.rate; v.play().catch(()=>{}); }); play.textContent="❚❚"; } };
+  document.querySelectorAll("[data-seek]").forEach(b=>b.onclick=()=>{ const d=+b.dataset.seek;
+    vTargets().forEach(v=>{ v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+d)); }); });
   document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{ const d=+b.dataset.step/VID.fps;
     vTargets().forEach(v=>{ v.pause(); v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+d)); }); if(play) play.textContent="▶"; });
   const sy=$("#vsync"); if(sy) sy.onclick=()=>{ if(VID.linked){ VID.linked=false; } else { const a=vEl("A"), b=vEl("B"); if(!a||!b){ toast("영상 두 개를 먼저 골라 주세요."); return; } VID.offset=b.currentTime-a.currentTime; VID.linked=true; VID.target="AB"; } renderVideo(); };
@@ -827,7 +894,7 @@ function renderSettings(){
   ${ageTips(p)?`<h2>나이대별 확인 (${band(p).id==="m50"?"50세 이상":"35~49세"})</h2><div class="card" style="font-size:15px"><ul class="why">${ageTips(p).map(([t,k])=>`<li class="lo"><span>${t}<small class="src">${AGE_SRC[k]}</small></span></li>`).join("")}</ul></div>`:""}
   <h2>데이터</h2><div class="card"><button class="btn danger" id="wipe">이 폰의 모든 기록 지우기</button></div>
   <p class="mut" style="text-align:center">컨디션 신호등 v${APP_VER}</p>`;
-  $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), classLimit:S.profile.classLimit??"", subName:S.profile.subName||"", screening:{...S.profile.screening}}}; S.profile=null; render(); };
+  $("#reprof").onclick=()=>{ ob={step:0,p:{...S.profile, birthYear:String(S.profile.birthYear), birthMonth:String(S.profile.birthMonth), classLimit:S.profile.classLimit??"", subName:S.profile.subName||"", screening:{...S.profile.screening}}}; obPrev=S.profile; S.profile=null; render(); };
   $("#exj").onclick=()=>{ download(`컨디션신호등_백업_${today()}.json`, JSON.stringify({app:"condition-note",version:1,exported:new Date().toISOString(),data:S},null,1), "application/json"); S.lastBackup=today(); save(); };
   $("#exc").onclick=()=>{ download(`컨디션신호등_기록_${today()}.csv`, toCSV(), "text/csv"); };
   $("#imp").onclick=()=>$("#impf").click();
@@ -1077,6 +1144,7 @@ function dietCard(){
   <div class="mut">${r0(t.k).toLocaleString()} / ${T.kcal.toLocaleString()}kcal · 단백질 ${r0(t.p)} / ${T.p}g</div></div>`;
 }
 
+$("#back").onclick=uiBack;
 render();
 </script>
 </body>
