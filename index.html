@@ -188,6 +188,11 @@ small.src{color:#9a978f}
 small.src a,.src a{display:inline-block;padding:12px 4px;margin:-12px -4px}
 #back{min-height:44px;background:#0e0e0e;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .vtools button,.vseek button{min-height:44px}
+body.hasback::after{content:"";position:fixed;z-index:7;left:0;right:0;top:0;height:calc(60px + env(safe-area-inset-top));background:linear-gradient(#0e0e0e 70%,rgba(14,14,14,0));pointer-events:none}
+body.vfs.hasback::after{display:none}
+small.src a,.src a{padding:14px 4px;margin:-14px -4px}
+#toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+small.src{font-size:13px}
 </style>
 </head>
 <body>
@@ -217,7 +222,7 @@ function band(p){ const a=ageOf(p);
   return {id:"m50",name:"성인 · 50세 이상",youth:false}; }
 
 /* ───────── 종목 ───────── */
-const APP_VER = "0.4.4";
+const APP_VER = "0.4.5";
 // subs 값: null = 포지션 없음 / [[묶음 이름, [포지션…]], …]
 const SPORTS = {
   "구기": { subs:{
@@ -315,7 +320,7 @@ let NAV=[], obPrev=null;
 function go(t,back){ if(t!=="symptom") symSel=null; if(t!=="video"&&VID.full) setFull(false);
   if(tab==="edit"&&t!=="edit") draft=null;                       // 고치기 화면을 떠나면 저장 안 한 값은 버림
   // E) 버린 '체크인 고치기' 화면으로는 돌아가지 않고 오늘 화면으로
-  if(!back && t!==tab){ const from = tab==="edit" ? "today" : tab; if(from!==t) NAV.push(from); }
+  if(!back && t!==tab){ const from = tab==="edit" ? "today" : tab; if(from!==t && NAV[NAV.length-1]!==from) NAV.push(from); }
   tab=t; render(); window.scrollTo(0,0); arm(); }
 const canBack=()=>!!$("#modal").innerHTML || (!S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0);
 function goBack(){
@@ -329,7 +334,7 @@ function goBack(){
 function arm(){ try{ if(!(history.state&&history.state.guard)) history.pushState({guard:1},""); }catch(e){} }
 arm();
 window.addEventListener("popstate",()=>{ if(canBack()){ goBack(); arm(); } });
-function backBtn(){ const show = !S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0; $("#back").hidden=!show; }
+function backBtn(){ const show = !S.profile&&ob ? (ob.step>0||!!obPrev) : NAV.length>0; $("#back").hidden=!show; document.body.classList.toggle("hasback",show); }
 function uiBack(){ goBack(); }
 const $ = s => document.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -465,7 +470,7 @@ function renderOnboard(){
     ok=true;
   }
   $("#app").innerHTML=bar+h+`<button class="btn" id="next" ${ok?"":"disabled"}>${nextLabel(p,st,ok)}</button>${st>0?`<button class="btn ghost neutral back-l" id="prev">이전</button>`:""}`;
-  bindOnboard(); backBtn();
+  bindOnboard(); backBtn(); arm();
 }
 function obMissing(p,st){
   if(st===0) return [[p.birthYear&&p.birthMonth,"태어난 해·달"],[p.sex,"성별"]].filter(a=>!a[0]).map(a=>a[1]);
@@ -530,7 +535,7 @@ function signal(date){
   }
   // 3) 잠
   const need=b.youth?8:7;
-  if(L.sleepH && L.sleepH<need-1) up(1,`잠잔 시간 ${fmtSleep(L.sleepH)} · 권장(${b.youth?"8~10":"7"}시간 이상)보다 적어요.`);
+  if(L.sleepH && L.sleepH<need-1) up(1,`잠잔 시간 ${fmtSleep(L.sleepH)} · 권장 ${b.youth?"8H~10H":"7H 00M 이상"}보다 적어요.`);
   // 4) 훈련량 급증: 최근 7일 합 ÷ 최근 28일 주평균 (참고 지표)
   let acute=0, chronic=0, days=0;
   for(let i=0;i<28;i++){ const x=S.logs[addDays(date,-i)]; if(x){ days++; const v=tload(x); chronic+=v; if(i<7) acute+=v; } }
@@ -567,7 +572,7 @@ function weighCard(p,L){
   if(p.cat!=="투기"||!p.classLimit||band(p).youth) return "";
   const w=(L&&L.weight)||curWeight(), gap=Math.round((w-p.classLimit)*10)/10;
   return `<div class="wcard"><div class="cap">WEIGH-IN · ${esc(p.weightClass||"")} ${p.classLimit}KG</div><b>${w}<small>kg</small></b>
-  <p>${gap>0?`한계까지 ${gap}kg`:`한계보다 ${Math.abs(gap)}kg 가벼워요`}${L&&L.weight?"":" · 최근 기록 기준"}${cutDday()?` · ${cutDday()}`:""}</p></div>`;
+  <p>${gap>0?`한계보다 ${gap}kg 초과 · 더 빼야 해요`:`한계까지 여유 ${Math.abs(gap)}kg`}${L&&L.weight?"":" · 최근 기록 기준"}${cutDday()?` · ${cutDday()}`:""}</p></div>`;
 }
 function renderToday(){
   paintSig();
@@ -844,7 +849,7 @@ function renderHistory(){
     rows.push(`<div class="hist"><span class="hd" style="background:var(--${s?s.color:"line"})"></span><div style="flex:1"><b>${k.slice(5).replace("-","/")}</b>
     <span class="mut"> · 컨디션 ${L.sleepQ?wsum(L)+"/20":"-"} · 잠 ${L.sleepH!=null?fmtSleep(L.sleepH):"-"}${L.weight?" · "+L.weight+"kg":""}${L.trainMin?" · 훈련 "+L.trainMin+"분×"+(L.rpe||"-"):""}${L.pain?" · 통증 "+["","약간","중간","심함"][L.pain]+(L.painPart?"("+L.painPart+")":""):""}</span></div></div>`); }
   const mx=Math.max(1,...loads);
-  const bars=loads.map((v,i)=>`<rect x="${i*(100/28)+0.4}" y="${60-v/mx*56}" width="${100/28-0.8}" height="${v/mx*56}" rx="0.6" fill="var(--acc)" opacity="${i>=21?1:.45}"/>`).join("");
+  const bars=loads.map((v,i)=>`<rect x="${i*(100/28)+0.4}" y="${60-v/mx*56}" width="${100/28-0.8}" height="${v/mx*56}" rx="0.6" fill="var(--gold)" opacity="${i>=21?1:.45}"/>`).join("");
   $("#app").innerHTML=`<div class="kick">HISTORY</div><h1>기록</h1>
   <div class="card"><b>최근 4주 훈련량</b><svg class="spark" viewBox="0 0 100 60" preserveAspectRatio="none">${bars}</svg><small class="src">진한 막대가 최근 7일이에요.</small></div>
   <div class="card">${rows.length?rows.join(""):`<p class="mut">아직 기록이 없어요.</p>`}</div>`;
@@ -980,7 +985,7 @@ function renderSettings(){
   $("#impf").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const j=JSON.parse(await f.text()); if(j.app!=="condition-note"||!j.data||!j.data.logs) throw 0;
       ask(`백업 파일의 기록 ${Object.keys(j.data.logs).length}일치로 바꿀까요? 지금 이 폰의 기록은 덮어써져요.`,"가져오기",()=>{ S=j.data; save(); toast("가져왔어요."); go("today"); });
     }catch(_){ toast("이 앱의 백업 파일이 아니에요."); } e.target.value=""; };
-  $("#wipe").onclick=()=>ask("이 폰의 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 내보내기를 권해요.","모두 지우기",()=>{ S=blank(); save(); tab="today"; render(); });
+  $("#wipe").onclick=()=>ask("이 폰의 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 내보내기를 권해요.","모두 지우기",()=>{ S=blank(); save(); NAV=[]; tab="today"; render(); });
 }
 function toCSV(){
   const h=["날짜","잔시간","잠","피로","근육통","스트레스","컨디션점수","통증","통증부위","몸무게","훈련분","힘든정도","훈련량","투구수","증상","신호"];
@@ -994,7 +999,7 @@ function download(name, text, type){
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
 }
 function ask(text, okLabel, fn){
-  $("#modal").innerHTML=`<div class="modal"><div class="card"><p>${esc(text)}</p><button class="btn danger" id="mok">${okLabel}</button><button class="btn ghost" id="mno">취소</button></div></div>`;
+  $("#modal").innerHTML=`<div class="modal"><div class="card"><p>${esc(text)}</p><button class="btn danger" id="mok">${okLabel}</button><button class="btn ghost neutral" id="mno">취소</button></div></div>`;
   $("#mok").onclick=()=>{ $("#modal").innerHTML=""; fn(); }; $("#mno").onclick=()=>$("#modal").innerHTML="";
 }
 function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>{ el.hidden=true; },1900); }
